@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-dim": "#dadada",
+              "surface-container-high": "#e8e8e8",
+              "primary-container": "#d4af37",
+              "surface-variant": "#e2e2e2",
+              "primary-fixed-dim": "#e9c349",
+              "on-tertiary": "#ffffff",
+              "error": "#ba1a1a",
+              "on-error": "#ffffff",
+              "secondary-fixed-dim": "#c6c6c9",
+              "on-tertiary-fixed-variant": "#27438a",
+              "surface-container-lowest": "#ffffff",
+              "surface-bright": "#f9f9f9",
+              "primary-fixed": "#ffe088",
+              "inverse-on-surface": "#f1f1f1",
+              "on-primary-fixed-variant": "#574500",
+              "tertiary-fixed-dim": "#b4c5ff",
+              "inverse-surface": "#2f3131",
+              "outline": "#7f7663",
+              "surface-container": "#eeeeee",
+              "secondary-container": "#e2e2e5",
+              "inverse-primary": "#e9c349",
+              "tertiary-fixed": "#dbe1ff",
+              "on-surface-variant": "#4d4635",
+              "surface-container-highest": "#e2e2e2",
+              "on-secondary-fixed-variant": "#454749",
+              "on-primary": "#ffffff",
+              "surface": "#f9f9f9",
+              "secondary": "#5d5e61",
+              "secondary-fixed": "#e2e2e5",
+              "on-primary-fixed": "#241a00",
+              "on-error-container": "#93000a",
+              "on-tertiary-fixed": "#00174b",
+              "on-surface": "#1a1c1c",
+              "on-secondary": "#ffffff",
+              "tertiary-container": "#97b0ff",
+              "outline-variant": "#d0c5af",
+              "background": "#f9f9f9",
+              "error-container": "#ffdad6",
+              "on-secondary-fixed": "#1a1c1e",
+              "on-primary-container": "#554300",
+              "on-tertiary-container": "#254188",
+              "surface-tint": "#735c00",
+              "on-secondary-container": "#636467",
+              "primary": "#735c00",
+              "tertiary": "#415ba4",
+              "surface-container-low": "#f3f3f3",
+              "on-background": "#1a1c1c"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Inter"],
+              "label": ["Inter"],
+              "arabic": ["IBM_Plex_Sans_Arabic"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'IBM Plex Sans Arabic', 'Inter', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .gold-gradient { background: linear-gradient(135deg, #735c00 0%, #d4af37 100%); }
+    </style>
+</head>
+<body class="bg-surface text-on-surface antialiased overflow-x-hidden">
+<!-- SideNavBar (Authority Anchor) -->
+<aside class="fixed top-0 right-0 h-full w-72 z-50 bg-zinc-900 shadow-2xl flex flex-col h-full text-right divide-y divide-zinc-800/50">
+<div class="p-8">
+<div class="flex items-center gap-4 mb-8">
+<div class="w-12 h-12 rounded-lg gold-gradient flex items-center justify-center">
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">business</span>
+</div>
+<div>
+<h2 class="text-white font-bold text-lg leading-tight">معهد التدريب</h2>
+<p class="text-zinc-500 text-xs">الإدارة المركزية</p>
+</div>
+</div>
+<nav class="space-y-1">
+<a class="text-zinc-400 px-6 py-4 flex items-center gap-4 hover:text-zinc-200 hover:bg-zinc-800/40 transition-all duration-200 cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span>لوحة التحكم</span>
+</a>
+<a class="text-zinc-400 px-6 py-4 flex items-center gap-4 hover:text-zinc-200 hover:bg-zinc-800/40 transition-all duration-200 cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined">how_to_reg</span>
+<span>التحضير اليومي</span>
+</a>
+<a class="text-zinc-400 px-6 py-4 flex items-center gap-4 hover:text-zinc-200 hover:bg-zinc-800/40 transition-all duration-200 cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined">assessment</span>
+<span>تقارير شهرية</span>
+</a>
+<a class="bg-gradient-to-l from-yellow-700/20 to-transparent text-yellow-500 border-r-4 border-yellow-600 px-6 py-4 flex items-center gap-4 transition-all duration-200 cursor-pointer" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">group</span>
+<span>قائمة الموظفين</span>
+</a>
+<a class="text-zinc-400 px-6 py-4 flex items-center gap-4 hover:text-zinc-200 hover:bg-zinc-800/40 transition-all duration-200 cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined">person_add</span>
+<span>إضافة موظف</span>
+</a>
+</nav>
+</div>
+<div class="mt-auto p-4">
+<a class="text-zinc-400 px-6 py-4 flex items-center gap-4 hover:text-zinc-200 hover:bg-zinc-800/40 transition-all duration-200 cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span>تسجيل الخروج</span>
+</a>
+</div>
+</aside>
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 right-0 h-20 z-40 bg-white/80 backdrop-blur-md shadow-[0_8px_24px_rgba(26,28,28,0.06)] flex flex-row-reverse items-center justify-between px-8 w-full mr-72">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2">
+<button class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-zinc-100/50 transition-colors duration-300">
+<span class="material-symbols-outlined text-zinc-500">settings</span>
+</button>
+<button class="relative w-10 h-10 rounded-full flex items-center justify-center hover:bg-zinc-100/50 transition-colors duration-300">
+<span class="material-symbols-outlined text-zinc-500">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+</div>
+<div class="flex items-center gap-3 pr-4 border-r border-outline-variant/30">
+<div class="text-left">
+<p class="text-sm font-bold text-on-surface">أحمد المسؤول</p>
+<p class="text-xs text-zinc-500">مدير النظام</p>
+</div>
+<img alt="صورة الملف الشخصي للمسؤول" class="w-10 h-10 rounded-lg object-cover" data-alt="professional portrait of a confident male executive in a modern business suit with a neutral background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBuMfSJC4C1Xvl9UNt0dupLbR-x6sCcw6Wlc168tYRMbf2KFsmi5PWviIEC2aRCOmQlVvuoY6n0iwzkdia46Toeu0yk_LnKZJZSR5oyTe6TDv1Q-tcRAlg5ZA8FWWJpumMZLNzqvQwr6YLNqokMiCFDsiyxfqdgWvyeh6FPbjEu6f93F2Oj2ei1UMepgINMt_yDZnQyv108GReG_r8l9vJKEU0ELW0Ag25evk1Xr_3tjjIVNYpDamno7B97qVcI3moK6D_2ZRF2aEVp"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<h1 class="text-xl font-bold tracking-tight text-zinc-900 font-headline">نظام التحضير الذكي</h1>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-32 pb-12 px-8 mr-72 ml-8 min-h-screen">
+<!-- Editorial Header Section -->
+<section class="max-w-7xl mx-auto mb-12">
+<div class="flex flex-col md:flex-row justify-between items-end gap-6">
+<div>
+<span class="text-primary font-bold tracking-widest uppercase text-xs mb-2 block">Admin Portal</span>
+<h2 class="text-5xl font-extrabold text-on-surface mb-4 font-headline leading-tight">اختيار الشركة</h2>
+<p class="text-zinc-500 max-w-lg leading-relaxed">يرجى اختيار المؤسسة التدريبية التي ترغب في إدارتها اليوم. يمكنك البحث والفلترة للوصول السريع.</p>
+</div>
+<!-- Advanced Search Module (Recessed) -->
+<div class="w-full md:w-96 bg-surface-container-high rounded-xl p-2 flex items-center gap-3 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+<span class="material-symbols-outlined text-zinc-400 mr-2">search</span>
+<input class="bg-transparent border-none focus:ring-0 w-full text-on-surface text-sm placeholder:text-zinc-400" placeholder="ابحث عن اسم الشركة..." type="text"/>
+<button class="bg-surface-container-lowest text-primary p-2 rounded-lg shadow-sm hover:bg-white transition-colors">
+<span class="material-symbols-outlined">tune</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Bento Grid Layout -->
+<div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+<!-- Company Card 1 -->
+<div class="group relative bg-surface-container-lowest rounded-xl p-8 shadow-[0_8px_24px_rgba(26,28,28,0.06)] hover:shadow-xl transition-all duration-500 overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full -mr-16 -mt-16 group-hover:scale-110 transition-transform"></div>
+<div class="relative z-10">
+<div class="w-16 h-16 bg-surface-container rounded-lg mb-6 flex items-center justify-center">
+<img alt="شركة التميز التقني" class="w-10 h-10 object-contain grayscale group-hover:grayscale-0 transition-all" data-alt="abstract minimalist corporate logo with geometric shapes in dark navy and white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBGPSXgnpzScXqRspE9bMo1VcVHNPD_Iz3U8LuBYtRrjA6FpKvJNiANjGz5gs4ZpIe98Rm_bM0ugL-CzIMhfJGfWR8V5eIrKjeOmUiWQ3UXuXsoraFem_33GC0OlDQTPaag_sZe5DluM8JUG5HacZ9gTMsxXhRlhBXOw-zEhELEkXaVuh4fSc2WA3P9uQTob6kbNZrmkiQK5vX_9kN81t2oQyXZ14EAB1IPAcNH--_msYXOwuGDb0vgHGV7xffBfj5QcQeT7195t-_x"/>
+</div>
+<h3 class="text-xl font-bold text-on-surface mb-2">شركة التميز التقني</h3>
+<p class="text-sm text-zinc-500 mb-8 leading-relaxed">حلول تقنية متكاملة وتدريب احترافي في مجالات البرمجيات.</p>
+<div class="flex items-center justify-between">
+<div class="flex -space-x-2 space-x-reverse">
+<div class="w-8 h-8 rounded-full border-2 border-white bg-zinc-200"></div>
+<div class="w-8 h-8 rounded-full border-2 border-white bg-zinc-300"></div>
+<div class="w-8 h-8 rounded-full border-2 border-white bg-primary text-[10px] text-white flex items-center justify-center font-bold">+12</div>
+</div>
+<button class="gold-gradient text-white px-6 py-2.5 rounded-lg font-bold text-sm shadow-lg shadow-primary/20 active:scale-95 transition-transform">
+                            اختيار
+                        </button>
+</div>
+</div>
+</div>
+<!-- Company Card 2 -->
+<div class="group relative bg-surface-container-lowest rounded-xl p-8 shadow-[0_8px_24px_rgba(26,28,28,0.06)] hover:shadow-xl transition-all duration-500 overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full -mr-16 -mt-16 group-hover:scale-110 transition-transform"></div>
+<div class="relative z-10">
+<div class="w-16 h-16 bg-surface-container rounded-lg mb-6 flex items-center justify-center">
+<img alt="أكاديمية الابتكار" class="w-10 h-10 object-contain grayscale group-hover:grayscale-0 transition-all" data-alt="modern tech company emblem with a stylized lightbulb icon representing innovation and education" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBontc9GVK9WRuN52WQhhzett--3JvQRuTv6r7YCdvH8eeD2mrVhN9EFhdQ6I69xEsyasOOTWJpCTbgCXNxMp0jIL1wsDqf3MYbb1nG7I02JNGOrQ4HvUGL32-PI3VZMQIY1td6NzOm4XQSUocfFt6giZot665tGTV08sjbCE_XwRKyHM0Kc2wetX7zD9gcjD-sDS8mh7TtODtm-FeXKRaihyrZofTujCWnk8fbHvMYnmfYzdt0-dvZzLiAUAVIs1Fx-WK2iLHnXlzg"/>
+</div>
+<h3 class="text-xl font-bold text-on-surface mb-2">أكاديمية الابتكار</h3>
+<p class="text-sm text-zinc-500 mb-8 leading-relaxed">تطوير الكوادر البشرية وتعزيز مهارات المستقبل الرقمي.</p>
+<div class="flex items-center justify-between">
+<div class="flex -space-x-2 space-x-reverse">
+<div class="w-8 h-8 rounded-full border-2 border-white bg-zinc-200"></div>
+<div class="w-8 h-8 rounded-full border-2 border-white bg-zinc-300"></div>
+<div class="w-8 h-8 rounded-full border-2 border-white bg-primary text-[10px] text-white flex items-center justify-center font-bold">+8</div>
+</div>
+<button class="gold-gradient text-white px-6 py-2.5 rounded-lg font-bold text-sm shadow-lg shadow-primary/20 active:scale-95 transition-transform">
+                            اختيار
+                        </button>
+</div>
+</div>
+</div>
+<!-- Company Card 3 -->
+<div class="group relative bg-surface-container-lowest rounded-xl p-8 shadow-[0_8px_24px_rgba(26,28,28,0.06)] hover:shadow-xl transition-all duration-500 overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full -mr-16 -mt-16 group-hover:scale-110 transition-transform"></div>
+<div class="relative z-10">
+<div class="w-16 h-16 bg-surface-container rounded-lg mb-6 flex items-center justify-center">
+<img alt="مجموعة الرؤية" class="w-10 h-10 object-contain grayscale group-hover:grayscale-0 transition-all" data-alt="luxury monogram logo with interlocking V and R letters in gold and charcoal gray" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCi-NhrPVVfu6gylm4kSC3mQSNjLpbjUbcSZu5svFhJYzydaxE1vOB_W-uRhbsbGNE7CgXgWI4p3FHrFwIGTQhbf1KcXzL0RidBpKvKYQnMm5OXZiPZHUE0vCR4_EyYg2qJnRmCrULGxOD9E-Dn-TbO5m75oUNOYTQdfWGl3MSe1nKzlvctayskpxspgVEf2FC9tEpjd-5hhmxp1GWilSJ_xqxKiCXw61CwQNH1XDHgQpkCc6IUg4pEa37SRRM8aLd8viCHTdn58jZR"/>
+</div>
+<h3 class="text-xl font-bold text-on-surface mb-2">مجموعة الرؤية</h3>
+<p class="text-sm text-zinc-500 mb-8 leading-relaxed">استشارات إدارية وبرامج تدريبية قيادية للمؤسسات الحكومية.</p>
+<div class="flex items-center justify-between">
+<div class="flex -space-x-2 space-x-reverse">
+<div class="w-8 h-8 rounded-full border-2 border-white bg-zinc-200"></div>
+<div class="w-8 h-8 rounded-full border-2 border-white bg-zinc-300"></div>
+<div class="w-8 h-8 rounded-full border-2 border-white bg-primary text-[10px] text-white flex items-center justify-center font-bold">+24</div>
+</div>
+<button class="gold-gradient text-white px-6 py-2.5 rounded-lg font-bold text-sm shadow-lg shadow-primary/20 active:scale-95 transition-transform">
+                            اختيار
+                        </button>
+</div>
+</div>
+</div>
+<!-- Company Card 4 (Recessed State - Locked) -->
+<div class="group relative bg-surface-container-low border border-outline-variant/20 rounded-xl p-8 overflow-hidden opacity-75">
+<div class="absolute top-4 left-4">
+<span class="material-symbols-outlined text-zinc-400">lock</span>
+</div>
+<div class="relative z-10">
+<div class="w-16 h-16 bg-surface-container-high rounded-lg mb-6 flex items-center justify-center">
+<span class="material-symbols-outlined text-zinc-400 text-3xl">corporate_fare</span>
+</div>
+<h3 class="text-xl font-bold text-zinc-400 mb-2">مؤسسة البناء المستقبلية</h3>
+<p class="text-sm text-zinc-400 mb-8 leading-relaxed">تحت الصيانة - يرجى مراجعة الدعم الفني لتفعيل الحساب.</p>
+<div class="flex items-center justify-between">
+<div class="w-24 h-4 bg-zinc-300 rounded-full animate-pulse"></div>
+<button class="bg-zinc-300 text-white px-6 py-2.5 rounded-lg font-bold text-sm cursor-not-allowed" disabled="">
+                            غير متاح
+                        </button>
+</div>
+</div>
+</div>
+<!-- Add New Company (Action Card) -->
+<div class="group relative border-2 border-dashed border-outline-variant/50 rounded-xl p-8 flex flex-col items-center justify-center text-center hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer">
+<div class="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-primary text-3xl">add_business</span>
+</div>
+<h3 class="text-lg font-bold text-on-surface">إضافة مؤسسة جديدة</h3>
+<p class="text-sm text-zinc-500 mt-2">إنشاء ملف تعريف لشركة تدريب جديدة</p>
+</div>
+</div>
+<!-- Metric Summary Bar (Asymmetric Layout) -->
+<section class="max-w-7xl mx-auto mt-20 grid grid-cols-1 md:grid-cols-4 gap-6">
+<div class="bg-inverse-surface text-white p-6 rounded-xl flex items-center gap-4">
+<div class="p-3 bg-white/10 rounded-lg">
+<span class="material-symbols-outlined text-primary-fixed">domain</span>
+</div>
+<div>
+<p class="text-xs text-zinc-400">إجمالي الشركات</p>
+<p class="text-2xl font-bold font-headline">42</p>
+</div>
+</div>
+<div class="bg-surface-container-low p-6 rounded-xl flex items-center gap-4">
+<div class="p-3 bg-primary/10 rounded-lg">
+<span class="material-symbols-outlined text-primary">groups</span>
+</div>
+<div>
+<p class="text-xs text-zinc-500">نشط الآن</p>
+<p class="text-2xl font-bold font-headline text-on-surface">1,204</p>
+</div>
+</div>
+<div class="md:col-span-2 bg-gradient-to-r from-zinc-900 to-zinc-800 p-8 rounded-xl relative overflow-hidden flex items-center justify-between">
+<div class="relative z-10">
+<h4 class="text-white font-bold mb-2">تحديثات النظام v2.4</h4>
+<p class="text-zinc-400 text-sm max-w-xs">تمت إضافة ميزة التقارير المتقدمة لجميع الشركات المسجلة.</p>
+</div>
+<button class="relative z-10 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm border border-white/20 backdrop-blur-sm transition-all">
+                    عرض التفاصيل
+                </button>
+<div class="absolute -bottom-10 -left-10 w-40 h-40 bg-primary/20 blur-3xl rounded-full"></div>
+</div>
+</section>
+</main>
+<!-- Contextual FAB (Only on relevant pages) -->
+<div class="fixed bottom-10 left-10 z-50">
+<button class="w-16 h-16 rounded-full gold-gradient text-white shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">support_agent</span>
+</button>
+</div>
+</body></html>

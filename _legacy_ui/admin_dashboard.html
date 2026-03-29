@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>نظام إدارة الحضور | معهد التدريب</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'IBM+Plex+Sans+Arabic', 'Inter', sans-serif;
+        }
+        .headline-font {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "on-secondary-fixed": "#1a1c1e",
+                "surface-variant": "#e2e2e2",
+                "tertiary-fixed-dim": "#b4c5ff",
+                "on-tertiary": "#ffffff",
+                "on-tertiary-container": "#254188",
+                "secondary-fixed-dim": "#c6c6c9",
+                "surface-container-lowest": "#ffffff",
+                "surface-container-high": "#e8e8e8",
+                "secondary-fixed": "#e2e2e5",
+                "on-secondary-fixed-variant": "#454749",
+                "secondary": "#5d5e61",
+                "on-primary-fixed": "#241a00",
+                "inverse-primary": "#e9c349",
+                "on-primary-fixed-variant": "#574500",
+                "surface-container": "#eeeeee",
+                "surface-container-low": "#f3f3f3",
+                "on-tertiary-fixed-variant": "#27438a",
+                "tertiary-container": "#97b0ff",
+                "surface-tint": "#735c00",
+                "on-surface": "#1a1c1c",
+                "surface-container-highest": "#e2e2e2",
+                "on-secondary": "#ffffff",
+                "on-background": "#1a1c1c",
+                "on-primary": "#ffffff",
+                "outline": "#7f7663",
+                "inverse-surface": "#2f3131",
+                "on-error": "#ffffff",
+                "on-tertiary-fixed": "#00174b",
+                "secondary-container": "#e2e2e5",
+                "surface-dim": "#dadada",
+                "surface-bright": "#f9f9f9",
+                "primary-fixed": "#ffe088",
+                "primary-container": "#d4af37",
+                "outline-variant": "#d0c5af",
+                "on-secondary-container": "#636467",
+                "primary-fixed-dim": "#e9c349",
+                "inverse-on-surface": "#f1f1f1",
+                "error": "#ba1a1a",
+                "on-primary-container": "#554300",
+                "background": "#f9f9f9",
+                "tertiary-fixed": "#dbe1ff",
+                "primary": "#735c00",
+                "error-container": "#ffdad6",
+                "tertiary": "#415ba4",
+                "on-surface-variant": "#4d4635",
+                "on-error-container": "#93000a",
+                "surface": "#f9f9f9"
+              },
+              fontFamily: {
+                "headline": ["Plus Jakarta Sans"],
+                "body": ["Inter"],
+                "label": ["Inter"]
+              },
+              borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+            },
+          },
+        }
+    </script>
+</head>
+<body class="bg-surface text-on-surface antialiased overflow-x-hidden">
+<!-- Sidebar Container -->
+<aside class="fixed right-0 top-0 h-full w-72 bg-zinc-900 z-50 shadow-2xl flex flex-col py-8 px-4 rtl">
+<div class="flex items-center gap-4 mb-10 px-2">
+<div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-white shadow-lg">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_balance</span>
+</div>
+<div>
+<h2 class="text-amber-500 font-bold text-2xl headline-font tracking-tight">معهد التدريب</h2>
+<p class="text-zinc-500 text-xs font-medium">الإدارة العامة</p>
+</div>
+</div>
+<nav class="flex-1 space-y-2">
+<!-- Active State -->
+<a class="flex items-center gap-4 px-4 py-3 bg-white/10 text-amber-500 border-r-4 border-amber-500 transition-all cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-medium">لوحة القيادة</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 text-zinc-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
+<span class="font-medium">الحضور اليومي</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 text-zinc-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="assessment">assessment</span>
+<span class="font-medium">التقارير الشهرية</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 text-zinc-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-medium">قائمة الموظفين</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 text-zinc-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="person_add">person_add</span>
+<span class="font-medium">إضافة موظف</span>
+</a>
+</nav>
+<div class="mt-auto pt-6 space-y-4">
+<button class="w-full bg-gradient-to-r from-primary to-primary-container text-white py-3 rounded-xl font-bold text-sm shadow-lg hover:opacity-90 active:scale-95 transition-all">
+                تحميل التقرير اليومي
+            </button>
+<div class="h-[1px] bg-zinc-800 my-4"></div>
+<a class="flex items-center gap-4 px-4 py-3 text-zinc-400 hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-medium">الإعدادات</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 text-zinc-400 hover:text-error transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="font-medium">تسجيل الخروج</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="mr-72 min-h-screen">
+<!-- Top Navigation -->
+<header class="fixed top-0 left-0 right-72 z-40 bg-white/80 backdrop-blur-md shadow-sm flex flex-row-reverse justify-between items-center px-8 py-4">
+<div class="flex items-center gap-6 flex-row-reverse">
+<div class="flex items-center gap-3">
+<div class="text-right">
+<p class="text-zinc-900 font-bold text-sm">محمد العتيبي</p>
+<p class="text-zinc-500 text-xs">مدير النظام</p>
+</div>
+<img alt="صورة الملف الشخصي للمدير" class="w-10 h-10 rounded-full border-2 border-primary-container object-cover" data-alt="professional portrait of a middle-aged man in business attire with a warm and confident expression against a neutral studio background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD_9DZIYLmueQoe6xZotuurmyUW6RPmJ2yDbzaYnGugFtXyGN9tSUy4YiJCGggv8f-p7TfxKItnZRmGvQXzgk8qOjSnbCYVXf3pcGqZYcp7U-JUPYt6UBRtlfaC91vwfPpRH1OfBkWF1sk-bUw12QynVf_1nLeBdjR-ff9GzATInxA8UmCjyAlnh4yVUMbJCEeyVhrHJjvo94M0jF5FUBBRL-bwmr46VCdWNsZYYcgS_akQ4TbqOu5T65BrTl5xGpYCLVc_fnYNeRIb"/>
+</div>
+<div class="flex gap-2">
+<button class="p-2 rounded-full hover:bg-zinc-50 transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined text-zinc-500" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 rounded-full hover:bg-zinc-50 transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined text-zinc-500" data-icon="settings">settings</span>
+</button>
+</div>
+</div>
+<div class="flex-1 max-w-md mx-8">
+<div class="relative group">
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-primary transition-colors" data-icon="search">search</span>
+<input class="w-full pr-10 pl-4 py-2 bg-surface-container-low border-none rounded-lg focus:ring-2 focus:ring-primary/20 text-sm transition-all" placeholder="البحث عن موظف أو تقرير..." type="text"/>
+</div>
+</div>
+<div class="flex items-center">
+<h1 class="text-xl font-black text-zinc-900 tracking-tight headline-font">لوحة التحكم</h1>
+</div>
+</header>
+<!-- Content Canvas -->
+<div class="pt-24 px-8 pb-12 space-y-8">
+<!-- Hero Stats Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<!-- Card 1 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border-r-4 border-primary flex flex-col justify-between">
+<div class="flex justify-between items-start">
+<div class="p-2 bg-primary/10 rounded-lg">
+<span class="material-symbols-outlined text-primary" data-icon="groups">groups</span>
+</div>
+<span class="text-tertiary text-xs font-bold">+12%</span>
+</div>
+<div class="mt-4">
+<p class="text-zinc-500 text-sm">إجمالي الموظفين</p>
+<h3 class="text-3xl font-black headline-font text-zinc-900 mt-1">1,284</h3>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border-r-4 border-tertiary flex flex-col justify-between">
+<div class="flex justify-between items-start">
+<div class="p-2 bg-tertiary/10 rounded-lg">
+<span class="material-symbols-outlined text-tertiary" data-icon="how_to_reg">how_to_reg</span>
+</div>
+<span class="text-tertiary text-xs font-bold">98.2%</span>
+</div>
+<div class="mt-4">
+<p class="text-zinc-500 text-sm">حضور اليوم</p>
+<h3 class="text-3xl font-black headline-font text-zinc-900 mt-1">1,261</h3>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border-r-4 border-error flex flex-col justify-between">
+<div class="flex justify-between items-start">
+<div class="p-2 bg-error/10 rounded-lg">
+<span class="material-symbols-outlined text-error" data-icon="person_off">person_off</span>
+</div>
+<span class="text-error text-xs font-bold">-2</span>
+</div>
+<div class="mt-4">
+<p class="text-zinc-500 text-sm">الغائبون</p>
+<h3 class="text-3xl font-black headline-font text-zinc-900 mt-1">23</h3>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="bg-zinc-900 p-6 rounded-xl shadow-xl flex flex-col justify-between relative overflow-hidden">
+<div class="absolute -right-4 -top-4 w-24 h-24 bg-primary/20 rounded-full blur-2xl"></div>
+<div class="flex justify-between items-start relative z-10">
+<div class="p-2 bg-primary/20 rounded-lg">
+<span class="material-symbols-outlined text-primary-fixed" data-icon="timer">timer</span>
+</div>
+</div>
+<div class="mt-4 relative z-10">
+<p class="text-zinc-400 text-sm">إجمالي ساعات التدريب</p>
+<h3 class="text-3xl font-black headline-font text-primary-fixed mt-1">45,820</h3>
+</div>
+</div>
+</div>
+<!-- Main Layout: Content and Actions -->
+<div class="grid grid-cols-12 gap-8">
+<!-- Visualization & Activity Column -->
+<div class="col-span-12 lg:col-span-8 space-y-8">
+<!-- Analytics Card -->
+<div class="bg-surface-container-lowest p-8 rounded-2xl shadow-sm overflow-hidden">
+<div class="flex justify-between items-center mb-8">
+<div>
+<h4 class="text-lg font-bold text-zinc-900">تحليلات الحضور الأسبوعية</h4>
+<p class="text-zinc-500 text-xs mt-1">معدل التزام المتدربين والموظفين للسبعة أيام الماضية</p>
+</div>
+<div class="flex gap-2">
+<button class="px-4 py-1.5 text-xs font-semibold bg-surface-container rounded-full text-zinc-600">هذا الشهر</button>
+<button class="px-4 py-1.5 text-xs font-semibold bg-primary text-white rounded-full">هذا الأسبوع</button>
+</div>
+</div>
+<!-- Pseudo-Chart Representation -->
+<div class="h-64 flex items-end justify-between gap-4 px-2">
+<div class="w-full bg-surface-container-low rounded-t-lg relative group h-[60%]">
+<div class="absolute bottom-0 w-full bg-primary-container/40 rounded-t-lg h-[85%] group-hover:h-[95%] transition-all duration-500"></div>
+<span class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-zinc-400">الأحد</span>
+</div>
+<div class="w-full bg-surface-container-low rounded-t-lg relative group h-[60%]">
+<div class="absolute bottom-0 w-full bg-primary-container/40 rounded-t-lg h-[70%] group-hover:h-[80%] transition-all duration-500"></div>
+<span class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-zinc-400">الإثنين</span>
+</div>
+<div class="w-full bg-surface-container-low rounded-t-lg relative group h-[60%]">
+<div class="absolute bottom-0 w-full bg-primary-container/40 rounded-t-lg h-[92%] group-hover:h-[100%] transition-all duration-500"></div>
+<span class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-zinc-400">الثلاثاء</span>
+</div>
+<div class="w-full bg-surface-container-low rounded-t-lg relative group h-[60%]">
+<div class="absolute bottom-0 w-full bg-primary-container/40 rounded-t-lg h-[88%] group-hover:h-[98%] transition-all duration-500"></div>
+<span class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-zinc-400">الأربعاء</span>
+</div>
+<div class="w-full bg-surface-container-low rounded-t-lg relative group h-[60%]">
+<div class="absolute bottom-0 w-full bg-primary-container/40 rounded-t-lg h-[95%] group-hover:h-[100%] transition-all duration-500"></div>
+<span class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-zinc-400">الخميس</span>
+</div>
+<div class="w-full bg-surface-container-low rounded-t-lg relative group h-[60%]">
+<div class="absolute bottom-0 w-full bg-zinc-200 rounded-t-lg h-[10%] transition-all duration-500"></div>
+<span class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-zinc-400">الجمعة</span>
+</div>
+<div class="w-full bg-surface-container-low rounded-t-lg relative group h-[60%]">
+<div class="absolute bottom-0 w-full bg-zinc-200 rounded-t-lg h-[15%] transition-all duration-500"></div>
+<span class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-zinc-400">السبت</span>
+</div>
+</div>
+</div>
+<!-- Recent Activity Feed -->
+<div class="bg-surface-container-lowest rounded-2xl shadow-sm">
+<div class="p-6 border-b border-surface-container">
+<h4 class="text-lg font-bold text-zinc-900">آخر التحركات</h4>
+</div>
+<div class="p-0">
+<div class="flex items-center gap-4 p-5 hover:bg-surface-container-low transition-colors">
+<img alt="employee avatar" class="w-10 h-10 rounded-full object-cover" data-alt="close-up of a smiling man with a beard wearing a smart casual shirt in a soft natural light office setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA-H5NxST1GVV16IG8HA7z-jgvA8EDW2RoyxLbB8Btbx9NYU4cRDi9qdUQiEZMl-X2fZ5FG4ItGlAlS8JxFb5f9Yo-ikP4P_CRYs9oAWlRvfxLBKIx7z5XnqcIekD21Q9LfpTPdSj2PWLcfeo4flwJkvIqW50wDipO0Hq8ilA7VTtJRMo-SzMDu6WDaX9F3gtJA-MetxS7cPA9sEYR8NqfmuiQ4aG--2F2PBoYrKGEZj9SthHMwEmY7J3wWVKShZwOv83pEPP_sHVhG"/>
+<div class="flex-1">
+<p class="text-sm font-semibold">سعد الشمري</p>
+<p class="text-xs text-zinc-500">تسجيل حضور - المبنى الرئيسي</p>
+</div>
+<div class="text-left">
+<p class="text-xs font-bold text-zinc-900">08:12 ص</p>
+<span class="inline-block px-2 py-0.5 bg-tertiary/10 text-tertiary text-[10px] rounded-full font-bold">في الوقت</span>
+</div>
+</div>
+<div class="flex items-center gap-4 p-5 hover:bg-surface-container-low transition-colors">
+<img alt="employee avatar" class="w-10 h-10 rounded-full object-cover" data-alt="portrait of a young professional woman smiling warmly with soft afternoon sunlight catching her hair" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAUs5vdU5gpbdoH8_7lcqcZZAcvtIMD8yLHcuXtslFag4yW-t1piKC1cHLw2iml6CbtfbYQ7A2F_aemNErie3y_KldBDVYYFu2pdcIGR_WUbwqkfTp637eKrRaWWLfhXqEglx9GfmxSLB6ZU8Eux1pAhwcu-jpwiFnkU6JFFHxVZ4Qz8mCmPB4RCiU8X_OJqADN_3yfnl_vdigTpz9aOlgP27wmkIjfGoHknOcxNSjIy0-yqJ-9sQsbv7VBH-KlMOK4bxI1MBn79Xpd"/>
+<div class="flex-1">
+<p class="text-sm font-semibold">سارة القحطاني</p>
+<p class="text-xs text-zinc-500">تسجيل حضور - المعمل الرقمي</p>
+</div>
+<div class="text-left">
+<p class="text-xs font-bold text-zinc-900">08:45 ص</p>
+<span class="inline-block px-2 py-0.5 bg-error/10 text-error text-[10px] rounded-full font-bold">متأخر</span>
+</div>
+</div>
+<div class="flex items-center gap-4 p-5 hover:bg-surface-container-low transition-colors border-t border-surface-container">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="person_add">person_add</span>
+</div>
+<div class="flex-1">
+<p class="text-sm font-semibold">إضافة موظف جديد</p>
+<p class="text-xs text-zinc-500">تمت إضافة "خالد الحربي" بواسطة محمد العتيبي</p>
+</div>
+<div class="text-left">
+<p class="text-xs font-bold text-zinc-900">أمس</p>
+</div>
+</div>
+</div>
+<div class="p-4 text-center">
+<button class="text-primary text-xs font-bold hover:underline">عرض جميع التحركات</button>
+</div>
+</div>
+</div>
+<!-- Quick Actions Sidebar Column -->
+<div class="col-span-12 lg:col-span-4 space-y-6">
+<div class="bg-gradient-to-br from-zinc-900 to-black p-8 rounded-2xl shadow-xl text-white">
+<h4 class="text-xl font-bold mb-6 headline-font tracking-tight">إجراءات سريعة</h4>
+<div class="space-y-4">
+<button class="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-xl transition-all group">
+<div class="flex items-center gap-4">
+<div class="p-2 bg-primary/20 rounded-lg group-hover:bg-primary/30 transition-colors">
+<span class="material-symbols-outlined text-primary-fixed" data-icon="calendar_month">calendar_month</span>
+</div>
+<span class="font-medium text-sm">الحضور اليومي</span>
+</div>
+<span class="material-symbols-outlined text-zinc-600 group-hover:text-white transition-colors" data-icon="chevron_left">chevron_left</span>
+</button>
+<button class="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-xl transition-all group">
+<div class="flex items-center gap-4">
+<div class="p-2 bg-primary/20 rounded-lg group-hover:bg-primary/30 transition-colors">
+<span class="material-symbols-outlined text-primary-fixed" data-icon="description">description</span>
+</div>
+<span class="font-medium text-sm">التقارير الشهرية</span>
+</div>
+<span class="material-symbols-outlined text-zinc-600 group-hover:text-white transition-colors" data-icon="chevron_left">chevron_left</span>
+</button>
+<button class="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-xl transition-all group">
+<div class="flex items-center gap-4">
+<div class="p-2 bg-primary/20 rounded-lg group-hover:bg-primary/30 transition-colors">
+<span class="material-symbols-outlined text-primary-fixed" data-icon="badge">badge</span>
+</div>
+<span class="font-medium text-sm">قائمة الموظفين</span>
+</div>
+<span class="material-symbols-outlined text-zinc-600 group-hover:text-white transition-colors" data-icon="chevron_left">chevron_left</span>
+</button>
+<button class="w-full flex items-center justify-between p-4 bg-primary rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 active:scale-[0.98] transition-all group">
+<div class="flex items-center gap-4">
+<div class="p-2 bg-white/20 rounded-lg">
+<span class="material-symbols-outlined text-white" data-icon="person_add">person_add</span>
+</div>
+<span class="font-bold text-sm">إضافة موظف جديد</span>
+</div>
+<span class="material-symbols-outlined text-white/50" data-icon="add">add</span>
+</button>
+</div>
+</div>
+<!-- Information Card -->
+<div class="bg-primary-container/10 p-6 rounded-2xl border-r-4 border-primary/30">
+<div class="flex items-center gap-3 mb-3">
+<span class="material-symbols-outlined text-primary" data-icon="info">info</span>
+<h5 class="font-bold text-sm text-zinc-900">تحديثات النظام</h5>
+</div>
+<p class="text-xs text-zinc-600 leading-relaxed">
+                            تم تحسين نظام التعرّف على الوجه في المبنى الغربي. يرجى التأكد من تحديث بيانات المتدربين الجدد قبل يوم الأحد.
+                        </p>
+<a class="inline-block mt-4 text-xs font-bold text-primary hover:underline" href="#">اقرأ المزيد</a>
+</div>
+<!-- Performance Overview -->
+<div class="bg-surface-container-lowest p-6 rounded-2xl shadow-sm">
+<h5 class="font-bold text-sm mb-6 text-zinc-900">كفاءة الأقسام</h5>
+<div class="space-y-4">
+<div>
+<div class="flex justify-between text-xs mb-1.5">
+<span class="text-zinc-500">قسم الهندسة</span>
+<span class="font-bold">96%</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 96%"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between text-xs mb-1.5">
+<span class="text-zinc-500">قسم الإدارة</span>
+<span class="font-bold">92%</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 92%"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between text-xs mb-1.5">
+<span class="text-zinc-500">قسم تكنولوجيا المعلومات</span>
+<span class="font-bold">88%</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 88%"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Floating Action Button (FAB) - Suppression logic: Primary for dashboard -->
+<button class="fixed bottom-8 left-8 w-16 h-16 bg-zinc-900 text-primary-fixed rounded-full shadow-2xl flex items-center justify-center active:scale-90 transition-transform z-50 hover:bg-black group">
+<span class="material-symbols-outlined text-3xl group-hover:rotate-12 transition-transform" data-icon="qr_code_scanner">qr_code_scanner</span>
+</button>
+</body></html>
