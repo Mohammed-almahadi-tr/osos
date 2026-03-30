@@ -41,7 +41,24 @@ const ProtectedRoute = ({ children, requireAdmin, requireEmployee }) => {
 };
 
 function App() {
-  const { user, isAdmin, isEmployee, loading } = useAuth();
+  const { user, isAdmin, isEmployee, loading, authError } = useAuth();
+
+  if (authError) {
+    const debugUrl = import.meta.env.VITE_SUPABASE_URL || 'UNDEFINED';
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-surface text-center p-6" dir="rtl">
+        <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full border border-red-100">
+          <span className="material-symbols-outlined text-red-500 text-5xl mb-4">error</span>
+          <h2 className="text-xl font-bold text-red-600 mb-2">تعذر الاتصال بقاعدة البيانات</h2>
+          <p className="text-zinc-600 text-sm mb-4">{authError}</p>
+          <div className="bg-gray-100 p-2 rounded text-xs text-left mb-6 break-all w-full text-black">
+            URL: {debugUrl}
+          </div>
+          <button onClick={() => window.location.reload()} className="px-6 py-2 bg-red-50 text-red-600 rounded-lg font-bold hover:bg-red-100 transition">إعادة المحاولة</button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center bg-surface text-primary">جاري التحميل...</div>;
