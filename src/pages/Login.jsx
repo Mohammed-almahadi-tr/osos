@@ -18,23 +18,50 @@ const Login = () => {
         }
 
         setIsLoading(true);
-        // Supabase requires email. If they only have username, we simulate an email domain: username@company.com
-        // OR we can query the profile to find email. Let's assume we log them in via email: username@system.local
-        // For standard setup let's just assume username is an email for now, or append a default domain if it has no @ symbol
-        const loginEmail = username.includes('@') ? username : `${username}@system.local`;
+        
+        try {
+            // Check if Supabase is configured
+            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+            const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+            
+            if (!supabaseUrl || !supabaseKey) {
+                toast.error('خطأ في الإعدادات: لم يتم تكوين Supabase بشكل صحيح');
+                console.error('❌ Supabase credentials missing in .env file');
+                setIsLoading(false);
+                return;
+            }
+            
+            // Convert username to email format if needed
+            const loginEmail = username.includes('@') ? username : `${username}@system.local`;
+            
+            console.log('🔐 Attempting login for:', loginEmail);
 
-        const { error, data } = await supabase.auth.signInWithPassword({
-            email: loginEmail,
-            password: password,
-        });
+            const { error, data } = await supabase.auth.signInWithPassword({
+                email: loginEmail,
+                password: password,
+            });
 
-        if (error) {
-            toast.error(error.message === 'Invalid login credentials' ? 'بيانات الاعتماد غير صحيحة' : error.message);
-        } else {
-            toast.success('تم تسجيل الدخول بنجاح');
-            // The AuthContext will catch the auth state change and redirect based on role
+            if (error) {
+                console.error('❌ Login error:', error);
+                
+                if (error.message === 'Invalid login credentials') {
+                    toast.error('بيانات الاعتماد غير صحيحة');
+                } else if (error.message.includes('Email not confirmed')) {
+                    toast.error('يرجى تأكيد البريد الإلكتروني أولاً');
+                } else {
+                    toast.error(`خطأ في تسجيل الدخول: ${error.message}`);
+                }
+            } else {
+                console.log('✅ Login successful');
+                toast.success('تم تسجيل الدخول بنجاح');
+                // The AuthContext will catch the auth state change and redirect based on role
+            }
+        } catch (error) {
+            console.error('❌ Unexpected login error:', error);
+            toast.error('حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى');
+        } finally {
+            setIsLoading(false);
         }
-        setIsLoading(false);
     };
 
     return (
@@ -48,12 +75,12 @@ const Login = () => {
                 <div className="bg-surface-container-lowest rounded-xl shadow-[0_8px_24px_rgba(26,28,28,0.06)] overflow-hidden">
                     <div className="p-8 md:p-12">
                         <div className="flex flex-col items-center mb-10">
-                            <div className="mb-6 h-20 w-auto flex items-center justify-center">
-                                {/* Use an icon or text here instead of the Google external default if preferred */}
-                                <div className="text-4xl text-primary font-bold">logo</div>
+                            <div className="mb-6 flex items-center justify-center">
+                                {/* Added the company logo */}
+                                <img src="/logo.jpg" alt="أسس مدار الرؤية" className="h-32 w-32 object-cover rounded-2xl shadow-lg ring-1 ring-black/5" />
                             </div>
                             <h1 className="text-2xl font-headline font-bold text-on-surface tracking-tight text-center mb-2">
-                                مرحبا بكم في نظام إدارة الحضور
+                                مرحبا بكم في نظام أسس مدار الرؤية
                             </h1>
                             <p className="text-on-surface-variant text-sm text-center">
                                 يرجى إدخال بيانات الاعتماد الخاصة بك للوصول
@@ -133,7 +160,7 @@ const Login = () => {
                 </div>
                 
                 <footer className="mt-8 text-center text-on-surface-variant/60 text-xs">
-                    <p>© 2024 نظام إدارة الحضور - معهد التدريب. جميع الحقوق محفوظة.</p>
+                    <p>© 2024 أسس مدار الرؤية. جميع الحقوق محفوظة.</p>
                 </footer>
             </main>
             
