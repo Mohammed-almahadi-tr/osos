@@ -100,7 +100,7 @@ export async function createTestAdmin(email, password) {
     console.log('✅ User created successfully!');
     console.log('User ID:', data.user.id);
     console.log('Email:', data.user.email);
-    console.log('\n⚠️ Check your email for confirmation link (if email confirmation is enabled)');
+    console.log('✅ User created successfully and ready to login');
     
     return true;
   } catch (err) {

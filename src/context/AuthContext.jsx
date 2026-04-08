@@ -15,21 +15,34 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         let isMounted = true;
         let timeoutId = null;
+        let maxTimeoutId = null;
         
         // Initial session fetch
         const fetchSession = async () => {
             try {
-                // Set a timeout for slow connections
+                // Set a warning timeout for slow connections
                 timeoutId = setTimeout(() => {
                     if (!isMounted) return;
                     console.warn('⚠️ Connection to Supabase is taking longer than expected...');
                 }, 5000);
+
+                // Set a maximum timeout to prevent infinite loading
+                maxTimeoutId = setTimeout(() => {
+                    if (!isMounted) return;
+                    console.error('❌ Connection timeout. Proceeding to login page.');
+                    setLoading(false);
+                }, 10000); // 10 seconds max
 
                 const { data: { session }, error } = await supabase.auth.getSession();
                 
                 if (timeoutId) {
                     clearTimeout(timeoutId);
                     timeoutId = null;
+                }
+                
+                if (maxTimeoutId) {
+                    clearTimeout(maxTimeoutId);
+                    maxTimeoutId = null;
                 }
 
                 if (!isMounted) return;
@@ -50,6 +63,11 @@ export const AuthProvider = ({ children }) => {
                 if (timeoutId) {
                     clearTimeout(timeoutId);
                     timeoutId = null;
+                }
+                
+                if (maxTimeoutId) {
+                    clearTimeout(maxTimeoutId);
+                    maxTimeoutId = null;
                 }
                 
                 if (!isMounted) return;
@@ -89,6 +107,7 @@ export const AuthProvider = ({ children }) => {
         return () => {
             isMounted = false;
             if (timeoutId) clearTimeout(timeoutId);
+            if (maxTimeoutId) clearTimeout(maxTimeoutId);
             if (subscription) subscription.unsubscribe();
         };
     }, []);
@@ -110,6 +129,8 @@ export const AuthProvider = ({ children }) => {
                 }
                 
                 setProfile(null);
+                await supabase.auth.signOut();
+                setUser(null);
                 setLoading(false);
                 return;
             }
@@ -117,6 +138,8 @@ export const AuthProvider = ({ children }) => {
             if (!data.role || (data.role !== 'admin' && data.role !== 'employee')) {
                 console.error('❌ Invalid or missing role in profile:', data);
                 setProfile(null);
+                await supabase.auth.signOut();
+                setUser(null);
             } else {
                 console.log('✅ Profile loaded successfully:', { username: data.username, role: data.role });
                 setProfile(data);
@@ -124,6 +147,8 @@ export const AuthProvider = ({ children }) => {
         } catch (error) {
             console.error('❌ Unexpected error fetching profile:', error);
             setProfile(null);
+            await supabase.auth.signOut();
+            setUser(null);
         } finally {
             setLoading(false);
         }

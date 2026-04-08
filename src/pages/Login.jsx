@@ -46,8 +46,6 @@ const Login = () => {
                 
                 if (error.message === 'Invalid login credentials') {
                     toast.error('بيانات الاعتماد غير صحيحة');
-                } else if (error.message.includes('Email not confirmed')) {
-                    toast.error('يرجى تأكيد البريد الإلكتروني أولاً');
                 } else {
                     toast.error(`خطأ في تسجيل الدخول: ${error.message}`);
                 }
@@ -128,19 +126,7 @@ const Login = () => {
                                 </div>
                             </div>
                             
-                            <div className="flex items-center justify-between py-2">
-                                <div className="flex items-center">
-                                    <input type="checkbox" id="remember-me" className="h-4 w-4 text-primary focus:ring-primary border-outline-variant rounded bg-surface-container-low" />
-                                    <label htmlFor="remember-me" className="mr-2 block text-sm text-on-surface-variant">
-                                        تذكرني
-                                    </label>
-                                </div>
-                                <div className="text-sm">
-                                    <a href="#" className="font-medium text-primary hover:text-primary-container transition-colors">
-                                        نسيت كلمة المرور؟
-                                    </a>
-                                </div>
-                            </div>
+                            {/* Removed unused 'Remember Me' and 'Forgot Password' buttons per requirements */}
                             
                             <div className="pt-4">
                                 <button type="submit" disabled={isLoading} className="w-full editorial-gradient text-white font-headline font-bold py-4 px-6 rounded-lg shadow-lg hover:shadow-xl active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed">

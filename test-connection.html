@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase Connection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .test-item {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #ccc;
+        }
+        .test-item.pending {
+            background: #fff3cd;
+            border-color: #ffc107;
+        }
+        .test-item.success {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+        .test-item.error {
+            background: #f8d7da;
+            border-color: #dc3545;
+        }
+        .test-item h3 {
+            margin: 0 0 10px 0;
+        }
+        .test-item p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            display: block;
+            margin: 20px auto;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 اختبار اتصال Supabase</h1>
+        <p style="text-align: center; color: #666;">هذا الاختبار يتحقق من اتصال التطبيق بقاعدة البيانات</p>
+        
+        <button id="testBtn" onclick="runTests()">بدء الاختبار</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+        const SUPABASE_URL = 'https://vgtdqsbaiyaftqrmhhvg.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZndGRxc2JhaXlhZnRxcm1oaHZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4MTc3ODMsImV4cCI6MjA5MDM5Mzc4M30.2ONRrAYw11CvXifTiuo0EBKdlxLzcJhRhfVLVrBxIxM';
+
+        window.runTests = async function() {
+            const resultsDiv = document.getElementById('results');
+            const testBtn = document.getElementById('testBtn');
+            
+            resultsDiv.innerHTML = '';
+            testBtn.disabled = true;
+
+            // Test 1: Environment Variables
+            addTest('1. فحص متغيرات البيئة', 'pending');
+            await sleep(500);
+            if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+                updateTest('1. فحص متغيرات البيئة', 'success', `✅ URL: ${SUPABASE_URL}<br>✅ Key: ${SUPABASE_ANON_KEY.substring(0, 30)}...`);
+            } else {
+                updateTest('1. فحص متغيرات البيئة', 'error', '❌ متغيرات البيئة غير موجودة');
+                testBtn.disabled = false;
+                return;
+            }
+
+            // Test 2: Create Supabase Client
+            addTest('2. إنشاء عميل Supabase', 'pending');
+            await sleep(500);
+            let supabase;
+            try {
+                supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                updateTest('2. إنشاء عميل Supabase', 'success', '✅ تم إنشاء العميل بنجاح');
+            } catch (error) {
+                updateTest('2. إنشاء عميل Supabase', 'error', `❌ فشل: ${error.message}`);
+                testBtn.disabled = false;
+                return;
+            }
+
+            // Test 3: Test Database Connection
+            addTest('3. اختبار الاتصال بقاعدة البيانات', 'pending');
+            await sleep(500);
+            try {
+                const { data, error } = await supabase.from('companies').select('count');
+                if (error) throw error;
+                updateTest('3. اختبار الاتصال بقاعدة البيانات', 'success', '✅ الاتصال بقاعدة البيانات ناجح');
+            } catch (error) {
+                updateTest('3. اختبار الاتصال بقاعدة البيانات', 'error', `❌ فشل: ${error.message}`);
+                testBtn.disabled = false;
+                return;
+            }
+
+            // Test 4: Test Auth
+            addTest('4. اختبار نظام المصادقة', 'pending');
+            await sleep(500);
+            try {
+                const { data, error } = await supabase.auth.getSession();
+                if (error) throw error;
+                updateTest('4. اختبار نظام المصادقة', 'success', '✅ نظام المصادقة يعمل بشكل صحيح');
+            } catch (error) {
+                updateTest('4. اختبار نظام المصادقة', 'error', `❌ فشل: ${error.message}`);
+                testBtn.disabled = false;
+                return;
+            }
+
+            // Test 5: Test Companies Table
+            addTest('5. اختبار جدول الشركات', 'pending');
+            await sleep(500);
+            try {
+                const { data, error } = await supabase.from('companies').select('*').limit(1);
+                if (error) throw error;
+                updateTest('5. اختبار جدول الشركات', 'success', `✅ جدول الشركات متاح (${data.length} شركة)`);
+            } catch (error) {
+                updateTest('5. اختبار جدول الشركات', 'error', `❌ فشل: ${error.message}`);
+                testBtn.disabled = false;
+                return;
+            }
+
+            // Test 6: Test Profiles Table
+            addTest('6. اختبار جدول الملفات الشخصية', 'pending');
+            await sleep(500);
+            try {
+                const { data, error } = await supabase.from('profiles').select('*').limit(1);
+                if (error) throw error;
+                updateTest('6. اختبار جدول الملفات الشخصية', 'success', `✅ جدول الملفات الشخصية متاح (${data.length} ملف)`);
+            } catch (error) {
+                updateTest('6. اختبار جدول الملفات الشخصية', 'error', `❌ فشل: ${error.message}`);
+                testBtn.disabled = false;
+                return;
+            }
+
+            // All tests passed
+            resultsDiv.innerHTML += '<div class="test-item success"><h3>🎉 جميع الاختبارات نجحت!</h3><p>الاتصال بـ Supabase يعمل بشكل صحيح. يمكنك الآن استخدام التطبيق.</p></div>';
+            testBtn.disabled = false;
+        };
+
+        function addTest(name, status) {
+            const resultsDiv = document.getElementById('results');
+            const testDiv = document.createElement('div');
+            testDiv.className = `test-item ${status}`;
+            testDiv.id = `test-${name}`;
+            testDiv.innerHTML = `<h3>${name}</h3><p>جاري الاختبار...</p>`;
+            resultsDiv.appendChild(testDiv);
+        }
+
+        function updateTest(name, status, message) {
+            const testDiv = document.getElementById(`test-${name}`);
+            testDiv.className = `test-item ${status}`;
+            testDiv.innerHTML = `<h3>${name}</h3><p>${message}</p>`;
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+    </script>
+</body>
+</html>

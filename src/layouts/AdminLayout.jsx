@@ -72,6 +72,26 @@ const AdminLayout = () => {
                         <span className="material-symbols-outlined">person_add</span>
                         <span className="font-medium">إضافة موظف</span>
                     </NavLink>
+
+                    <div className="h-[1px] bg-zinc-800 my-2"></div>
+
+                    <NavLink to="/admin/companies" className={({ isActive }) => 
+                        clsx("flex items-center gap-4 px-4 py-3 transition-all cursor-pointer",
+                            isActive ? "bg-white/10 text-amber-500 border-r-4 border-amber-500" : "text-zinc-400 hover:text-white hover:bg-white/5"
+                        )
+                    }>
+                        <span className="material-symbols-outlined">corporate_fare</span>
+                        <span className="font-medium">إدارة الشركات</span>
+                    </NavLink>
+
+                    <NavLink to="/admin/add-company" className={({ isActive }) => 
+                        clsx("flex items-center gap-4 px-4 py-3 transition-all cursor-pointer",
+                            isActive ? "bg-white/10 text-amber-500 border-r-4 border-amber-500" : "text-zinc-400 hover:text-white hover:bg-white/5"
+                        )
+                    }>
+                        <span className="material-symbols-outlined">add_business</span>
+                        <span className="font-medium">إضافة شركة</span>
+                    </NavLink>
                 </nav>
 
                 <div className="mt-auto pt-6 space-y-4">

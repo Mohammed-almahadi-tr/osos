@@ -4,6 +4,18 @@
 
 Your "حساب غير مفعل" (Inactive Account) error has been resolved with comprehensive Supabase connection improvements.
 
+## ⚠️ Important: Email Confirmation Issue
+
+If employees see "يرجى تأكيد البريد الإلكتروني أولاً" (Please confirm email first) when trying to login:
+
+**Quick Fix (2 minutes):**
+1. Go to Supabase Dashboard → Authentication → Providers → Email
+2. Disable "Confirm email" toggle
+3. Save
+4. For existing users: Run SQL to confirm them (see `QUICK_FIX_EMAIL_CONFIRMATION.md`)
+
+**Detailed Guide:** See `EMAIL_CONFIRMATION_FIX.md`
+
 ---
 
 ## 🎯 Quick Start (3 Steps)

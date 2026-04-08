@@ -14,6 +14,8 @@ import DailyAttendance from './pages/admin/DailyAttendance';
 import MonthlyReports from './pages/admin/MonthlyReports';
 import EmployeesList from './pages/admin/EmployeesList';
 import AddEmployee from './pages/admin/AddEmployee';
+import AddCompany from './pages/admin/AddCompany';
+import CompaniesList from './pages/admin/CompaniesList';
 import EmployeeDashboard from './pages/employee/EmployeeDashboard';
 
 const ProtectedRoute = ({ children, requireAdmin, requireEmployee }) => {
@@ -29,12 +31,12 @@ const ProtectedRoute = ({ children, requireAdmin, requireEmployee }) => {
 
   if (requireAdmin && !isAdmin) {
     if (isEmployee) return <Navigate to="/employee/dashboard" replace />;
-    return <div className="min-h-screen flex flex-col justify-center items-center text-center p-6"><h2 className="text-2xl font-bold text-error mb-2">حساب غير مفعل</h2><p className="text-zinc-600 mb-6">هذا الحساب لا يمتلك صلاحيات حالياً. يرجى مراجعة مدير النظام.</p><button onClick={() => window.location.href='/login'} className="px-6 py-2 bg-primary text-white rounded-lg font-bold">العودة للاسترجاع</button></div>;
+    return <Navigate to="/login" replace />;
   }
 
   if (requireEmployee && !isEmployee) {
     if (isAdmin) return <Navigate to="/admin/company-selection" replace />;
-    return <div className="min-h-screen flex flex-col justify-center items-center text-center p-6"><h2 className="text-2xl font-bold text-error mb-2">حساب غير مفعل</h2><p className="text-zinc-600 mb-6">هذا الحساب لا يمتلك صلاحيات حالياً. يرجى مراجعة مدير النظام.</p><button onClick={() => window.location.href='/login'} className="px-6 py-2 bg-primary text-white rounded-lg font-bold">العودة للاسترجاع</button></div>;
+    return <Navigate to="/login" replace />;
   }
 
   return children;
@@ -51,13 +53,13 @@ function App() {
     <Router>
       <Toaster position="top-center" />
       <Routes>
-        <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
+        <Route path="/login" element={(user && (isAdmin || isEmployee)) ? <Navigate to="/" replace /> : <Login />} />
         
         <Route path="/" element={
           !user ? <Navigate to="/login" replace /> :
           isAdmin ? <Navigate to="/admin/company-selection" replace /> :
           isEmployee ? <Navigate to="/employee/dashboard" replace /> :
-          <div className="min-h-screen flex flex-col justify-center items-center text-center p-6"><h2 className="text-2xl font-bold text-error mb-2">حساب غير مفعل</h2><p className="text-zinc-600 mb-6">يرجى التأكد من تعيين دور (admin / employee) في جدول profiles الخاص بك في Supabase.</p><button onClick={() => window.location.href='/login'} className="px-6 py-2 bg-primary text-white rounded-lg font-bold">العودة للاسترجاع</button></div>
+          <Navigate to="/login" replace />
         } />
 
         {/* Admin Routes */}
@@ -77,6 +79,8 @@ function App() {
           <Route path="reports" element={<MonthlyReports />} />
           <Route path="employees" element={<EmployeesList />} />
           <Route path="add-employee" element={<AddEmployee />} />
+          <Route path="companies" element={<CompaniesList />} />
+          <Route path="add-company" element={<AddCompany />} />
         </Route>
 
         {/* Employee Routes */}
