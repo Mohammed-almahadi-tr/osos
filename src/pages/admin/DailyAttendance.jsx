@@ -69,16 +69,16 @@ const DailyAttendance = () => {
                     <h2 className="text-xl font-bold headline-font text-zinc-900">سجل الحضور اليومي</h2>
                     <p className="text-sm text-zinc-500">متابعة حضور وانصراف الموظفين بالتفصيل</p>
                 </div>
-                <div className="flex gap-4 items-center w-full md:w-auto">
-                    <div className="relative">
+                <div className="flex flex-col sm:flex-row gap-4 items-center w-full md:w-auto">
+                    <div className="relative w-full sm:w-auto">
                         <input 
                             type="date" 
                             value={date}
                             onChange={(e) => setDate(e.target.value)}
-                            className="bg-surface-container-low border-none rounded-xl py-2.5 px-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 cursor-pointer" 
+                            className="bg-surface-container-low border-none rounded-xl py-2.5 px-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 cursor-pointer w-full sm:w-auto" 
                         />
                     </div>
-                    <button className="bg-surface-container hover:bg-zinc-200 text-zinc-700 font-bold px-4 py-2.5 rounded-xl transition-colors flex items-center gap-2">
+                    <button className="bg-surface-container hover:bg-zinc-200 text-zinc-700 font-bold px-4 py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2 w-full sm:w-auto">
                         <span className="material-symbols-outlined text-sm">download</span>
                         تصدير
                     </button>

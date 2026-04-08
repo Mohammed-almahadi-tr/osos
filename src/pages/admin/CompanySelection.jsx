@@ -49,14 +49,14 @@ const CompanySelection = () => {
     return (
         <div dir="rtl" className="bg-surface text-on-surface antialiased overflow-x-hidden min-h-screen">
             {/* TopAppBar */}
-            <header className="fixed top-0 left-0 right-0 h-20 z-40 bg-white/80 backdrop-blur-md shadow-[0_8px_24px_rgba(26,28,28,0.06)] flex flex-row-reverse items-center justify-between px-8 w-full">
+            <header className="fixed top-0 left-0 right-0 h-16 md:h-20 z-40 bg-white/80 backdrop-blur-md shadow-[0_8px_24px_rgba(26,28,28,0.06)] flex flex-row-reverse items-center justify-between px-4 md:px-8 w-full">
                 <div className="flex items-center gap-6">
                     <button onClick={handleSignOut} className="text-sm font-bold text-error flex items-center gap-2 hover:bg-error/10 px-4 py-2 rounded-lg transition-colors">
                         <span className="material-symbols-outlined">logout</span>
                         تسجيل الخروج
                     </button>
                     <div className="flex items-center gap-3 border-r border-outline-variant/30 pr-4">
-                        <div className="text-left flex flex-col items-end">
+                        <div className="text-left flex-col items-end hidden sm:flex">
                             <p className="text-sm font-bold text-on-surface">{profile?.username || 'مدير النظام'}</p>
                             <p className="text-xs text-zinc-500">مدير النظام</p>
                         </div>
@@ -66,22 +66,22 @@ const CompanySelection = () => {
                     </div>
                 </div>
                 <div className="flex items-center gap-4">
-                    <h1 className="text-xl font-bold tracking-tight text-zinc-900 font-headline">نظام التحكم الشامل</h1>
+                    <h1 className="text-lg md:text-xl font-bold tracking-tight text-zinc-900 font-headline hidden sm:block">نظام التحكم الشامل</h1>
                 </div>
             </header>
 
             {/* Main Content Canvas */}
-            <main className="pt-32 pb-12 px-8 max-w-7xl mx-auto min-h-screen">
-                <section className="mb-12">
-                    <div className="flex flex-col md:flex-row justify-between items-end gap-6">
+            <main className="pt-24 md:pt-32 pb-12 px-4 md:px-8 max-w-7xl mx-auto min-h-screen">
+                <section className="mb-8 md:mb-12">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                         <div>
-                            <span className="text-primary font-bold tracking-widest uppercase text-xs mb-2 block">Admin Portal</span>
-                            <h2 className="text-5xl font-extrabold text-on-surface mb-4 font-headline leading-tight">اختيار الشركة</h2>
-                            <p className="text-zinc-500 max-w-lg leading-relaxed">يرجى اختيار المؤسسة التدريبية التي ترغب في إدارتها اليوم.</p>
+                            <span className="text-primary font-bold tracking-widest uppercase text-[10px] md:text-xs mb-2 block">Admin Portal</span>
+                            <h2 className="text-3xl md:text-5xl font-extrabold text-on-surface mb-3 md:mb-4 font-headline leading-tight">اختيار الشركة</h2>
+                            <p className="text-zinc-500 max-w-lg leading-relaxed text-sm md:text-base">يرجى اختيار المؤسسة التدريبية التي ترغب في إدارتها اليوم.</p>
                         </div>
                         <button 
                             onClick={() => navigate('/admin/add-company')}
-                            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-primary-container text-white font-bold rounded-xl shadow-lg hover:opacity-90 transition-opacity"
+                            className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-primary-container text-white font-bold rounded-xl shadow-lg hover:opacity-90 transition-opacity w-full md:w-auto"
                         >
                             <span className="material-symbols-outlined">add</span>
                             <span>إضافة شركة جديدة</span>

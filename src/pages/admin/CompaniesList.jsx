@@ -117,7 +117,7 @@ const CompaniesList = () => {
                 </div>
                 <button
                     onClick={() => navigate('/admin/add-company')}
-                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-primary-container text-white font-bold rounded-xl shadow-lg hover:opacity-90 transition-opacity"
+                    className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-primary-container text-white font-bold rounded-xl shadow-lg hover:opacity-90 transition-opacity w-full md:w-auto"
                 >
                     <span className="material-symbols-outlined">add</span>
                     <span>إضافة شركة جديدة</span>

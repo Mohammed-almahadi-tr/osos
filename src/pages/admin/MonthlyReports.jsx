@@ -110,13 +110,13 @@ const MonthlyReports = () => {
                     <h2 className="text-xl font-bold headline-font text-zinc-900">التقارير الشهرية</h2>
                     <p className="text-sm text-zinc-500">إحصائيات شاملة لحضور وانصراف الموظفين</p>
                 </div>
-                <div className="flex gap-4 items-center w-full md:w-auto">
-                    <div className="relative">
+                <div className="flex flex-col sm:flex-row gap-4 items-center w-full md:w-auto">
+                    <div className="relative w-full sm:w-auto">
                         <input 
                             type="month" 
                             value={month}
                             onChange={(e) => setMonth(e.target.value)}
-                            className="bg-surface-container-low border-none rounded-xl py-2.5 px-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 cursor-pointer w-48" 
+                            className="bg-surface-container-low border-none rounded-xl py-2.5 px-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 cursor-pointer w-full sm:w-48" 
                         />
                     </div>
                 </div>

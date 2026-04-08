@@ -104,11 +104,11 @@ const AdminDashboard = () => {
             </div>
 
             {/* Main Layout: Content and Actions */}
-            <div className="grid grid-cols-12 gap-8">
+            <div className="grid grid-cols-12 gap-6 md:gap-8 flex-col-reverse">
                 {/* Visualization & Activity Column */}
-                <div className="col-span-12 lg:col-span-8 space-y-8">
+                <div className="col-span-12 lg:col-span-8 space-y-6 md:space-y-8 order-2 lg:order-1">
                     {/* Placeholder for Analytics */}
-                    <div className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm overflow-hidden flex flex-col items-center justify-center min-h-[300px]">
+                    <div className="bg-surface-container-lowest p-5 md:p-8 rounded-2xl shadow-sm overflow-hidden flex flex-col items-center justify-center min-h-[250px] md:min-h-[300px]">
                          <span className="material-symbols-outlined text-zinc-200 text-6xl mb-4">bar_chart</span>
                          <h4 className="text-lg font-bold text-zinc-400">تحليلات الحضور الأسبوعية - (قريباً)</h4>
                          <p className="text-sm text-zinc-400">ستتوفر بيانات الرسم البياني بمجرد تجميع النشاط الكافي</p>
@@ -116,8 +116,8 @@ const AdminDashboard = () => {
                 </div>
 
                 {/* Quick Actions Sidebar Column */}
-                <div className="col-span-12 lg:col-span-4 space-y-6">
-                    <div className="bg-gradient-to-br from-zinc-900 to-black p-8 rounded-2xl shadow-xl text-white">
+                <div className="col-span-12 lg:col-span-4 space-y-6 order-1 lg:order-2">
+                    <div className="bg-gradient-to-br from-zinc-900 to-black p-6 md:p-8 rounded-2xl shadow-xl text-white">
                         <h4 className="text-xl font-bold mb-6 headline-font tracking-tight">إجراءات سريعة</h4>
                         <div className="space-y-4">
                             <button className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-xl transition-all group">

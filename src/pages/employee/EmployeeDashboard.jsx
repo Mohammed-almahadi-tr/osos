@@ -112,15 +112,15 @@ const EmployeeDashboard = () => {
     return (
         <div className="space-y-10">
             {/* Hero Welcome & Attendance Action */}
-            <div className="flex flex-col lg:flex-row items-end justify-between gap-8 mb-10">
+            <div className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-6 md:gap-8 mb-8 md:mb-10">
                 <div className="flex-1">
-                    <h1 className="text-4xl font-extrabold editorial-text tracking-tight text-zinc-900 mb-2">أهلاً بك، {profile?.username}</h1>
-                    <p className="text-zinc-500 text-lg">نتمنى لك يوماً إنتاجياً في معهد التدريب الوطني.</p>
+                    <h1 className="text-3xl md:text-4xl font-extrabold editorial-text tracking-tight text-zinc-900 mb-2">أهلاً بك، {profile?.username}</h1>
+                    <p className="text-zinc-500 text-base md:text-lg">نتمنى لك يوماً إنتاجياً في معهد التدريب الوطني.</p>
                 </div>
 
                 {/* Attendance Action Bar */}
-                <div className="bg-surface-container-lowest p-6 rounded-2xl shadow-sm border border-outline-variant/10 flex flex-col sm:flex-row items-center gap-8 w-full lg:w-auto">
-                    <div className="flex items-center gap-4 px-6 sm:border-l border-zinc-100 w-full sm:w-auto">
+                <div className="bg-surface-container-lowest p-4 sm:p-6 rounded-2xl shadow-sm border border-outline-variant/10 flex flex-col sm:flex-row items-center gap-6 md:gap-8 w-full lg:w-auto">
+                    <div className="flex items-center gap-4 px-2 sm:px-6 border-b sm:border-b-0 pb-4 sm:pb-0 sm:border-l border-zinc-100 w-full sm:w-auto justify-center sm:justify-start">
                         <div className={`w-12 h-12 rounded-full flex items-center justify-center ${hasCheckedIn && !hasCheckedOut ? 'bg-tertiary/10 text-tertiary' : hasCheckedOut ? 'bg-zinc-100 text-zinc-400' : 'bg-amber-100 text-amber-600'}`}>
                             <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
                                 {hasCheckedIn && !hasCheckedOut ? 'check_circle' : hasCheckedOut ? 'home' : 'schedule'}
@@ -172,10 +172,10 @@ const EmployeeDashboard = () => {
                     </div>
                 </div>
 
-                <div className="col-span-12 lg:col-span-4 space-y-6">
+                <div className="col-span-12 lg:col-span-4 space-y-6 order-first lg:order-last">
                     {/* Profile Quick View */}
                     <div className="bg-gradient-to-br from-tertiary to-tertiary-container rounded-2xl p-1 text-white shadow-lg">
-                        <div className="bg-zinc-900/40 backdrop-blur-sm rounded-2xl p-8 h-full">
+                        <div className="bg-zinc-900/40 backdrop-blur-sm rounded-2xl p-6 md:p-8 h-full">
                             <div className="flex items-center gap-4 mb-6">
                                 <div className="w-16 h-16 rounded-2xl bg-zinc-800 flex items-center justify-center text-3xl font-bold border-2 border-white/20">
                                     {profile?.username?.charAt(0).toUpperCase()}
