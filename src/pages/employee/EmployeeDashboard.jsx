@@ -115,7 +115,7 @@ const EmployeeDashboard = () => {
             <div className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-6 md:gap-8 mb-8 md:mb-10">
                 <div className="flex-1">
                     <h1 className="text-3xl md:text-4xl font-extrabold editorial-text tracking-tight text-zinc-900 mb-2">أهلاً بك، {profile?.username}</h1>
-                    <p className="text-zinc-500 text-base md:text-lg">نتمنى لك يوماً إنتاجياً في معهد التدريب الوطني.</p>
+                    <p className="text-zinc-500 text-base md:text-lg">نتمنى لك يوماً إنتاجياً في أسس مدار الرؤية.</p>
                 </div>
 
                 {/* Attendance Action Bar */}

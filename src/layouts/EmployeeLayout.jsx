@@ -34,11 +34,11 @@ const EmployeeLayout = () => {
             )}>
                 <div className="flex items-center justify-between mb-12 px-2">
                     <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-primary-container flex items-center justify-center">
-                            <span className="material-symbols-outlined text-on-primary-container text-2xl md:text-3xl">school</span>
+                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-white flex items-center justify-center overflow-hidden border border-zinc-200">
+                            <img src="/logo.jpg" alt="أسس مدار الرؤية" className="w-full h-full object-contain" />
                         </div>
                         <div>
-                            <h2 className="text-amber-500 font-bold text-lg md:text-xl leading-tight">معهد التدريب</h2>
+                            <h2 className="text-amber-500 font-bold text-lg md:text-xl leading-tight">أسس مدار الرؤية</h2>
                             <p className="text-[10px] md:text-xs text-zinc-500">نظام الموظفين</p>
                         </div>
                     </div>
@@ -59,12 +59,7 @@ const EmployeeLayout = () => {
                 </nav>
 
                 <div className="mt-auto pt-6 border-t border-white/5 space-y-2">
-                    <button className="w-full flex items-center justify-between px-4 py-3 rounded-lg hover:bg-white/5 hover:text-white transition-all">
-                        <div className="flex items-center gap-3">
-                            <span className="material-symbols-outlined">settings</span>
-                            <span className="font-medium text-sm md:text-base">الإعدادات</span>
-                        </div>
-                    </button>
+
                     <button onClick={() => { closeMobileMenu(); handleSignOut(); }} className="w-full flex items-center justify-between px-4 py-3 rounded-lg text-error/80 hover:bg-error/10 hover:text-error transition-all">
                         <div className="flex items-center gap-3">
                             <span className="material-symbols-outlined">logout</span>
@@ -84,30 +79,16 @@ const EmployeeLayout = () => {
                         </button>
                     </div>
 
-                    <div className="flex-1 max-w-xl mx-4 hidden md:block">
-                        <div className="relative">
-                            <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">search</span>
-                            <input type="text" className="w-full bg-surface-container-high border-none rounded-xl py-2.5 pr-12 pl-4 text-sm focus:ring-2 focus:ring-primary/20 transition-all" placeholder="ابحث عن التقارير، الدورات..." />
-                        </div>
-                    </div>
+
 
                     <div className="flex items-center gap-2 md:gap-4 flex-row-reverse">
-                        <div className="flex items-center gap-3 border-l border-zinc-100 pl-2 md:pl-4">
+                        <div className="flex items-center gap-3">
                             <div className="text-right hidden sm:block">
                                 <p className="text-sm font-bold text-zinc-900 leading-tight">{profile?.username || 'الموظف'}</p>
                                 <p className="text-[10px] text-zinc-500 font-medium">موظف</p>
                             </div>
                             <div className="w-9 h-9 md:w-10 md:h-10 rounded-full border-2 border-primary-container bg-surface-container flex items-center justify-center text-primary font-bold text-sm">
                                 {profile?.username?.charAt(0).toUpperCase() || 'E'}
-                            </div>
-                        </div>
-                        <div className="flex gap-1">
-                            <div className="relative cursor-pointer hover:bg-zinc-50 p-2 rounded-full transition-colors hidden sm:block">
-                                <span className="material-symbols-outlined text-[20px] text-zinc-500">settings</span>
-                            </div>
-                            <div className="relative cursor-pointer hover:bg-zinc-50 p-2 rounded-full transition-colors">
-                                <span className="material-symbols-outlined text-[20px] text-zinc-500">notifications</span>
-                                <span className="absolute top-2 left-2 w-2 h-2 bg-primary rounded-full border-2 border-white"></span>
                             </div>
                         </div>
                     </div>

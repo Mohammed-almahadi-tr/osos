@@ -86,7 +86,7 @@ const AddCompany = () => {
                                 type="text"
                                 minLength={3}
                                 className="w-full bg-surface-container border-2 border-primary/20 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/40 focus:border-primary" 
-                                placeholder="مثال: معهد التدريب - الفرع الرئيسي" 
+                                placeholder="مثال: أسس مدار الرؤية - الفرع الرئيسي" 
                             />
                             <p className="text-xs text-zinc-500">3 أحرف على الأقل، اسم واضح ومميز</p>
                         </div>
@@ -97,9 +97,9 @@ const AddCompany = () => {
                                 <div className="flex-1">
                                     <h4 className="text-sm font-bold text-amber-900 mb-2">أمثلة على أسماء الشركات:</h4>
                                     <ul className="text-xs text-amber-700 space-y-1">
-                                        <li>• معهد التدريب - الفرع الرئيسي</li>
-                                        <li>• معهد التدريب - الفرع الشرقي</li>
-                                        <li>• معهد التدريب - الفرع الغربي</li>
+                                        <li>• أسس مدار الرؤية - الفرع الرئيسي</li>
+                                        <li>• أسس مدار الرؤية - الفرع الشرقي</li>
+                                        <li>• أسس مدار الرؤية - الفرع الغربي</li>
                                         <li>• شركة التطوير التقني</li>
                                         <li>• مركز الخدمات الإدارية</li>
                                     </ul>

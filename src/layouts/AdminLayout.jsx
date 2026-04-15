@@ -36,11 +36,11 @@ const AdminLayout = () => {
             )}>
                 <div className="flex items-center justify-between mb-10 px-2">
                     <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-white shadow-lg">
-                            <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>account_balance</span>
+                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-white shadow-lg flex items-center justify-center overflow-hidden border border-zinc-100">
+                            <img src="/logo.jpg" alt="أسس مدار الرؤية" className="w-full h-full object-contain" />
                         </div>
                         <div>
-                            <h2 className="text-amber-500 font-bold text-xl md:text-2xl headline-font tracking-tight">معهد التدريب</h2>
+                            <h2 className="text-amber-500 font-bold text-xl md:text-2xl headline-font tracking-tight">أسس مدار الرؤية</h2>
                             <p className="text-zinc-500 text-[10px] md:text-xs font-medium">الإدارة العامة</p>
                         </div>
                     </div>
