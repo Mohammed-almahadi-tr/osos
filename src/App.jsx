@@ -16,6 +16,7 @@ import EmployeesList from './pages/admin/EmployeesList';
 import AddEmployee from './pages/admin/AddEmployee';
 import AddCompany from './pages/admin/AddCompany';
 import CompaniesList from './pages/admin/CompaniesList';
+import CompanyCourses from './pages/admin/CompanyCourses';
 import EmployeeDashboard from './pages/employee/EmployeeDashboard';
 
 const ProtectedRoute = ({ children, requireAdmin, requireEmployee }) => {
@@ -81,6 +82,7 @@ function App() {
           <Route path="add-employee" element={<AddEmployee />} />
           <Route path="companies" element={<CompaniesList />} />
           <Route path="add-company" element={<AddCompany />} />
+          <Route path="company-courses" element={<CompanyCourses />} />
         </Route>
 
         {/* Employee Routes */}

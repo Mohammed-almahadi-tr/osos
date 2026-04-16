@@ -114,6 +114,15 @@ const AdminLayout = () => {
                         <span className="material-symbols-outlined">add_business</span>
                         <span className="font-medium text-sm md:text-base">إضافة شركة</span>
                     </NavLink>
+
+                    <NavLink onClick={closeMobileMenu} to="/admin/company-courses" className={({ isActive }) => 
+                        clsx("flex items-center gap-4 px-4 py-3 rounded-lg transition-all cursor-pointer",
+                            isActive ? "bg-primary/10 text-amber-500 border-r-4 border-amber-500" : "text-zinc-400 hover:text-white hover:bg-white/5"
+                        )
+                    }>
+                        <span className="material-symbols-outlined">library_books</span>
+                        <span className="font-medium text-sm md:text-base">أكاديمية الدورات</span>
+                    </NavLink>
                 </nav>
 
                 <div className="mt-auto pt-6 border-t border-zinc-800 space-y-3">
