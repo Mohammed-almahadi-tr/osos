@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 const EmployeeDashboard = () => {
     const { user, profile } = useAuth();
     const [employeeId, setEmployeeId] = useState(null);
+    const [employeeName, setEmployeeName] = useState('');
     const [attendanceRecord, setAttendanceRecord] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -20,7 +21,7 @@ const EmployeeDashboard = () => {
             // First find the employee record matching the user_id
             const { data: empData, error: empError } = await supabase
                 .from('employees')
-                .select('id')
+                .select('id, name')
                 .eq('user_id', user.id)
                 .single();
             
@@ -28,6 +29,7 @@ const EmployeeDashboard = () => {
             
             if (empData) {
                 setEmployeeId(empData.id);
+                setEmployeeName(empData.name);
                 await fetchTodayAttendance(empData.id);
             }
         } catch (error) {
@@ -114,7 +116,7 @@ const EmployeeDashboard = () => {
             {/* Hero Welcome & Attendance Action */}
             <div className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-6 md:gap-8 mb-8 md:mb-10">
                 <div className="flex-1">
-                    <h1 className="text-3xl md:text-4xl font-extrabold editorial-text tracking-tight text-zinc-900 mb-2">أهلاً بك، {profile?.username}</h1>
+                    <h1 className="text-3xl md:text-4xl font-extrabold editorial-text tracking-tight text-zinc-900 mb-2">أهلاً بك، {employeeName || profile?.username}</h1>
                     <p className="text-zinc-500 text-base md:text-lg">نتمنى لك يوماً إنتاجياً في أسس مدار الرؤية.</p>
                 </div>
 
@@ -138,7 +140,7 @@ const EmployeeDashboard = () => {
                         <button 
                             onClick={handleCheckIn} 
                             disabled={loading || !employeeId}
-                            className="bg-gradient-to-br w-full sm:w-auto from-green-600 to-green-700 text-white px-8 py-4 rounded-xl font-bold flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                            className="bg-gradient-to-br w-full sm:w-auto from-green-600 to-green-700 text-white px-8 py-4 rounded-xl font-bold flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">
                             <span className="material-symbols-outlined">login</span>
                             <span>تسجيل الحضور</span>
                         </button>
@@ -146,12 +148,12 @@ const EmployeeDashboard = () => {
                         <button 
                             onClick={handleCheckOut} 
                             disabled={loading}
-                            className="bg-gradient-to-br w-full sm:w-auto from-primary to-primary-container text-white px-8 py-4 rounded-xl font-bold flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                            className="bg-gradient-to-br w-full sm:w-auto from-primary to-primary-container text-white px-8 py-4 rounded-xl font-bold flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">
                             <span className="material-symbols-outlined">logout</span>
                             <span>تسجيل الانصراف</span>
                         </button>
                     ) : (
-                        <div className="w-full sm:w-auto text-center px-8 py-4 rounded-xl font-bold text-zinc-400 bg-zinc-100 border border-zinc-200">
+                        <div className="w-full sm:w-auto text-center px-8 py-4 rounded-xl font-bold text-zinc-400 bg-zinc-100 border border-zinc-200 whitespace-nowrap">
                             تم إنهاء العمل لليوم
                         </div>
                     )}
@@ -177,11 +179,11 @@ const EmployeeDashboard = () => {
                     <div className="bg-gradient-to-br from-tertiary to-tertiary-container rounded-2xl p-1 text-white shadow-lg">
                         <div className="bg-zinc-900/40 backdrop-blur-sm rounded-2xl p-6 md:p-8 h-full">
                             <div className="flex items-center gap-4 mb-6">
-                                <div className="w-16 h-16 rounded-2xl bg-zinc-800 flex items-center justify-center text-3xl font-bold border-2 border-white/20">
-                                    {profile?.username?.charAt(0).toUpperCase()}
+                                <div className="w-16 h-16 shrink-0 rounded-2xl bg-zinc-800 flex items-center justify-center text-3xl font-bold border-2 border-white/20">
+                                    {(employeeName || profile?.username)?.charAt(0).toUpperCase()}
                                 </div>
-                                <div>
-                                    <h4 className="font-bold text-lg">{profile?.username}</h4>
+                                <div className="min-w-0 flex-1">
+                                    <h4 className="font-bold text-lg truncate" title={employeeName || profile?.username}>{employeeName || profile?.username}</h4>
                                     <p className="text-tertiary-fixed-dim text-xs">موظف معتمد</p>
                                 </div>
                             </div>
