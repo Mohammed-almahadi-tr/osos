@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
+import toast from 'react-hot-toast';
 
 const AuthContext = createContext();
 
@@ -126,6 +127,9 @@ export const AuthProvider = ({ children }) => {
                 // If profile doesn't exist, user needs to have their role set
                 if (error.code === 'PGRST116') {
                     console.error('❌ No profile found for user. The trigger may not have fired or role is not set.');
+                    toast.error('لم يتم العثور على ملف تعريف لهذا المستخدم. يرجى مراجعة المسؤول.');
+                } else {
+                    toast.error(`خطأ في جلب بيانات المستخدم: ${error.message}`);
                 }
                 
                 setProfile(null);
@@ -137,6 +141,7 @@ export const AuthProvider = ({ children }) => {
             
             if (!data.role || (data.role !== 'admin' && data.role !== 'employee')) {
                 console.error('❌ Invalid or missing role in profile:', data);
+                toast.error('هذا الحساب ليس لديه صلاحيات الدخول المحددة (مسؤول أو موظف).');
                 setProfile(null);
                 await supabase.auth.signOut();
                 setUser(null);

@@ -32,7 +32,51 @@ create policy "Only admins can insert companies." on companies for insert with c
 -- Insert dummy companies
 insert into public.companies (name) values ('معهد التدريب - الفرع الرئيسي'), ('معهد التدريب - الفرع الغربي');
 
--- 3. Employees
+-- 3. Courses Table
+create table public.courses (
+  id uuid default uuid_generate_v4() primary key,
+  name text not null,
+  duration text, -- e.g., "30 hours", "3 days"
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Enable RLS for courses
+alter table public.courses enable row level security;
+
+-- Policies for courses
+create policy "Courses are viewable by everyone." on courses for select using (true);
+create policy "Only admins can manage courses." on courses for all using (
+  exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
+);
+
+-- Insert dummy courses for testing
+insert into public.courses (name, duration) values 
+('دورة الأمن والسلامة المهنية', '30 ساعة'),
+('إدارة المشاريع الاحترافية', '5 أيام'),
+('الإسعافات الأولية', 'يوم واحد');
+
+-- 4. Company Courses Junction Table
+create table public.company_courses (
+  id uuid default uuid_generate_v4() primary key,
+  company_id uuid references public.companies(id) on delete cascade not null,
+  course_id uuid references public.courses(id) on delete cascade not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique (company_id, course_id) -- Prevent duplicate assignments
+);
+
+-- Enable RLS for company_courses
+alter table public.company_courses enable row level security;
+
+-- Policies for company_courses
+create policy "company_courses viewable by authenticated users" on company_courses for select using (
+  auth.role() = 'authenticated'
+);
+
+create policy "Admins can manage company_courses" on company_courses for all using (
+  exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
+);
+
+-- 5. Employees
 create table public.employees (
   id uuid default uuid_generate_v4() primary key,
   name text not null,
@@ -42,7 +86,8 @@ create table public.employees (
   job_title text,
   salary numeric(10, 2),
   company_id uuid references public.companies(id) not null,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  user_id uuid references auth.users(id)
 );
 
 alter table public.employees enable row level security;
@@ -58,17 +103,11 @@ create policy "Admins can update employees" on employees for update using (
 create policy "Admins can delete employees" on employees for delete using (
   exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
 );
--- Allow employees to see their own data based on matching profiles logic (or just link auth id)
--- If we want an employee to login and see their attendance, they need an auth row. 
--- So employee.email should match auth.users.email, or we add user_id to employees.
-alter table public.employees add column user_id uuid references auth.users(id);
-
 create policy "Employees can view own data" on employees for select using (
   auth.uid() = user_id
 );
 
-
--- 4. Attendance
+-- 6. Attendance
 create table public.attendance (
   id uuid default uuid_generate_v4() primary key,
   employee_id uuid references public.employees(id) not null,
@@ -112,6 +151,8 @@ begin
   return new;
 end;
 $$ language plpgsql security definer set search_path = public;
+
+drop trigger if exists on_auth_user_created on auth.users;
 
 create trigger on_auth_user_created
   after insert on auth.users
