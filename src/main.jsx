@@ -19,11 +19,9 @@ if (import.meta.env.DEV) {
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
     <AuthProvider>
       <CompanyProvider>
         <App />
       </CompanyProvider>
-    </AuthProvider>
-  </React.StrictMode>,
+    </AuthProvider>,
 );

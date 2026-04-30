@@ -103,6 +103,39 @@ const MonthlyReports = () => {
         return days;
     }
 
+    const handleExportCSV = () => {
+        if (reportData.length === 0) {
+            toast.error("لا توجد بيانات للتصدير");
+            return;
+        }
+
+        const headers = ["الموظف", "القسم/دور", "أيام الحضور", "أيام الغياب", "إجمالي الساعات", "نسبة الالتزام"];
+        const BOM = "\uFEFF"; 
+        let csvContent = BOM + headers.join(",") + "\n";
+
+        reportData.forEach(row => {
+            const rowData = [
+                `"${row.name}"`,
+                `"${row.job_title || ''}"`,
+                `"${row.daysPresent} يوم"`,
+                `"${row.daysAbsent} يوم"`,
+                `"${row.totalHours} ساعة"`,
+                `"${row.completionRate}%"`
+            ];
+            
+            csvContent += rowData.join(",") + "\n";
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `monthly_report_${month}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm">
@@ -119,6 +152,10 @@ const MonthlyReports = () => {
                             className="bg-surface-container-low border-none rounded-xl py-2.5 px-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 cursor-pointer w-full sm:w-48" 
                         />
                     </div>
+                    <button onClick={handleExportCSV} className="bg-surface-container hover:bg-zinc-200 text-zinc-700 font-bold px-4 py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2 w-full sm:w-auto">
+                        <span className="material-symbols-outlined text-sm">download</span>
+                        تصدير
+                    </button>
                 </div>
             </div>
 

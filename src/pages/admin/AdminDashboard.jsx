@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useCompany } from '../../context/CompanyContext';
 import { supabase } from '../../services/supabase';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 
 const AdminDashboard = () => {
+    const navigate = useNavigate();
     const { selectedCompanyId } = useCompany();
     const [stats, setStats] = useState({ employees: 0, attendanceToday: 0, absentToday: 0 });
     const [loading, setLoading] = useState(true);
@@ -120,7 +121,7 @@ const AdminDashboard = () => {
                     <div className="bg-gradient-to-br from-zinc-900 to-black p-6 md:p-8 rounded-2xl shadow-xl text-white">
                         <h4 className="text-xl font-bold mb-6 headline-font tracking-tight">إجراءات سريعة</h4>
                         <div className="space-y-4">
-                            <button className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-xl transition-all group">
+                            <button onClick={() => navigate('/admin/attendance')} className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-xl transition-all group">
                                 <div className="flex items-center gap-4">
                                     <div className="p-2 bg-primary/20 rounded-lg group-hover:bg-primary/30 transition-colors">
                                         <span className="material-symbols-outlined text-primary-fixed">calendar_month</span>
@@ -130,7 +131,7 @@ const AdminDashboard = () => {
                                 <span className="material-symbols-outlined text-zinc-600 group-hover:text-white transition-colors">chevron_left</span>
                             </button>
                             
-                            <button className="w-full flex items-center justify-between p-4 bg-primary rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 active:scale-[0.98] transition-all group">
+                            <button onClick={() => navigate('/admin/add-employee')} className="w-full flex items-center justify-between p-4 bg-primary rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 active:scale-[0.98] transition-all group">
                                 <div className="flex items-center gap-4">
                                     <div className="p-2 bg-white/20 rounded-lg">
                                         <span className="material-symbols-outlined text-white">person_add</span>

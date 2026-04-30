@@ -62,6 +62,46 @@ const DailyAttendance = () => {
         return new Date(isoString).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
     };
 
+    const handleExportCSV = () => {
+        if (attendanceRows.length === 0) {
+            toast.error("لا توجد بيانات للتصدير");
+            return;
+        }
+
+        const headers = ["الموظف", "القسم/دور", "وقت الدخول", "وقت الخروج", "الحالة"];
+        const BOM = "\uFEFF"; // Byte Order Mark for UTF-8 to support Arabic in Excel
+        let csvContent = BOM + headers.join(",") + "\n";
+
+        attendanceRows.forEach(row => {
+            const hasCheckedIn = !!row.check_in;
+            const hasCheckedOut = !!row.check_out;
+            
+            let status = "";
+            if (hasCheckedIn && !hasCheckedOut) status = "حاضر الآن";
+            else if (hasCheckedOut) status = "منصرف";
+            else status = "غائب";
+
+            const rowData = [
+                `"${row.name}"`,
+                `"${row.job_title || ''}"`,
+                `"${formatTime(row.check_in)}"`,
+                `"${formatTime(row.check_out)}"`,
+                `"${status}"`
+            ];
+            
+            csvContent += rowData.join(",") + "\n";
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `attendance_report_${date}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm">
@@ -78,7 +118,7 @@ const DailyAttendance = () => {
                             className="bg-surface-container-low border-none rounded-xl py-2.5 px-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 cursor-pointer w-full sm:w-auto" 
                         />
                     </div>
-                    <button className="bg-surface-container hover:bg-zinc-200 text-zinc-700 font-bold px-4 py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2 w-full sm:w-auto">
+                    <button onClick={handleExportCSV} className="bg-surface-container hover:bg-zinc-200 text-zinc-700 font-bold px-4 py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2 w-full sm:w-auto">
                         <span className="material-symbols-outlined text-sm">download</span>
                         تصدير
                     </button>
