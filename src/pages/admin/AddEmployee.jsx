@@ -16,6 +16,7 @@ const AddEmployee = () => {
         national_id: '',
         job_title: '',
         salary: '',
+        job_skills: '',
         username: '',
         password: ''
     });
@@ -115,6 +116,7 @@ const AddEmployee = () => {
                 national_id: formData.national_id,
                 job_title: formData.job_title,
                 salary: parseFloat(formData.salary),
+                job_skills: formData.job_skills,
                 company_id: selectedCompanyId,
                 user_id: userId // Link employee to auth user
             };
@@ -227,7 +229,7 @@ const AddEmployee = () => {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-bold text-zinc-700">الراتب الأساسي</label>
+                                <label className="text-sm font-bold text-zinc-700">المرتب</label>
                                 <input 
                                     required
                                     name="salary"
@@ -237,6 +239,17 @@ const AddEmployee = () => {
                                     className="w-full bg-surface-container border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20" 
                                     placeholder="5000" 
                                 />
+                            </div>
+                            <div className="space-y-2 md:col-span-2">
+                                <label className="text-sm font-bold text-zinc-700">المهارات الوظيفية</label>
+                                <textarea 
+                                    name="job_skills"
+                                    value={formData.job_skills}
+                                    onChange={handleChange}
+                                    className="w-full bg-surface-container border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 min-h-[100px]" 
+                                    placeholder="مثال: البرمجة، إدارة المشاريع، تصميم الواجهات..." 
+                                ></textarea>
+                                <p className="text-xs text-zinc-500">يمكنك إدخال مهارات متعددة مفصولة بفاصلة</p>
                             </div>
                         </div>
                     </div>

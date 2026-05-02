@@ -85,6 +85,7 @@ create table public.employees (
   national_id text,
   job_title text,
   salary numeric(10, 2),
+  job_skills text,
   company_id uuid references public.companies(id) not null,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   user_id uuid references auth.users(id)
@@ -113,6 +114,7 @@ create table public.attendance (
   employee_id uuid references public.employees(id) not null,
   check_in timestamp with time zone,
   check_out timestamp with time zone,
+  percentage_of_achievement numeric(5, 2),
   date date not null default current_date,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   unique (employee_id, date) -- One attendance record per employee per day

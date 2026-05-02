@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../services/supabase';
 import { useCompany } from '../../context/CompanyContext';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 const DailyAttendance = () => {
     const { selectedCompanyId } = useCompany();
+    const navigate = useNavigate();
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [attendanceRows, setAttendanceRows] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -21,7 +23,7 @@ const DailyAttendance = () => {
             // Fetch employees for company
             const { data: employeesData, error: empError } = await supabase
                 .from('employees')
-                .select('id, name, job_title')
+                .select('id, name, job_title, national_id, salary')
                 .eq('company_id', selectedCompanyId);
             
             if (empError) throw empError;
@@ -131,7 +133,9 @@ const DailyAttendance = () => {
                         <thead className="bg-surface-container-low text-zinc-600 font-bold">
                             <tr>
                                 <th className="px-6 py-4 rounded-tr-xl">الموظف</th>
+                                <th className="px-6 py-4">الهوية الوطنية</th>
                                 <th className="px-6 py-4">القسم/دور</th>
+                                <th className="px-6 py-4">المرتب</th>
                                 <th className="px-6 py-4">وقت الدخول</th>
                                 <th className="px-6 py-4">وقت الخروج</th>
                                 <th className="px-6 py-4 rounded-tl-xl text-center">الحالة</th>
@@ -148,7 +152,7 @@ const DailyAttendance = () => {
                                     const hasCheckedOut = !!row.check_out;
 
                                     return (
-                                        <tr key={row.id} className="hover:bg-zinc-50 transition-colors">
+                                        <tr key={row.id} onClick={() => navigate(`/admin/employee/${row.id}`)} className="hover:bg-zinc-50 transition-colors cursor-pointer">
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
@@ -157,7 +161,9 @@ const DailyAttendance = () => {
                                                     <p className="font-bold text-zinc-900">{row.name}</p>
                                                 </div>
                                             </td>
+                                            <td className="px-6 py-4 text-zinc-600 font-medium">{row.national_id || '-'}</td>
                                             <td className="px-6 py-4 text-zinc-600 font-medium">{row.job_title}</td>
+                                            <td className="px-6 py-4 text-zinc-600 font-medium">{row.salary ? `${row.salary} ريال` : '-'}</td>
                                             <td className="px-6 py-4 font-bold text-zinc-900">{formatTime(row.check_in)}</td>
                                             <td className="px-6 py-4 font-bold text-zinc-900">{formatTime(row.check_out)}</td>
                                             <td className="px-6 py-4 text-center">

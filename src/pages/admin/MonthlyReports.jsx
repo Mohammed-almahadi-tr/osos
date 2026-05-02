@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../services/supabase';
 import { useCompany } from '../../context/CompanyContext';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 const MonthlyReports = () => {
     const { selectedCompanyId } = useCompany();
+    const navigate = useNavigate();
     // Default to current year and month (e.g., "2024-03")
     const [month, setMonth] = useState(() => {
         const today = new Date();
@@ -26,7 +28,7 @@ const MonthlyReports = () => {
             // Get all employees for the company
             const { data: employeesData, error: empError } = await supabase
                 .from('employees')
-                .select('id, name, job_title')
+                .select('id, name, job_title, national_id, salary')
                 .eq('company_id', selectedCompanyId);
             
             if (empError) throw empError;
@@ -165,6 +167,8 @@ const MonthlyReports = () => {
                         <thead className="bg-surface-container-low text-zinc-600 font-bold">
                             <tr>
                                 <th className="px-6 py-4 rounded-tr-xl">الموظف</th>
+                                <th className="px-6 py-4">الهوية الوطنية</th>
+                                <th className="px-6 py-4">المرتب</th>
                                 <th className="px-6 py-4">أيام الحضور</th>
                                 <th className="px-6 py-4">أيام الغياب</th>
                                 <th className="px-6 py-4">إجمالي الساعات</th>
@@ -178,7 +182,7 @@ const MonthlyReports = () => {
                                 <tr><td colSpan="5" className="text-center py-10 text-zinc-500">لا يوجد موظفين مسجلين</td></tr>
                             ) : (
                                 reportData.map((row) => (
-                                    <tr key={row.id} className="hover:bg-zinc-50 transition-colors">
+                                    <tr key={row.id} onClick={() => navigate(`/admin/employee/${row.id}`)} className="hover:bg-zinc-50 transition-colors cursor-pointer">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
@@ -190,6 +194,8 @@ const MonthlyReports = () => {
                                                 </div>
                                             </div>
                                         </td>
+                                        <td className="px-6 py-4 text-zinc-600 font-medium">{row.national_id || '-'}</td>
+                                        <td className="px-6 py-4 text-zinc-600 font-medium">{row.salary ? `${row.salary} ريال` : '-'}</td>
                                         <td className="px-6 py-4 font-bold text-green-600">{row.daysPresent} يوم</td>
                                         <td className="px-6 py-4 font-bold text-error">{row.daysAbsent} يوم</td>
                                         <td className="px-6 py-4 font-bold text-zinc-900">{row.totalHours} ساعة</td>
