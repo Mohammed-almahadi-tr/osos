@@ -4,6 +4,7 @@ import { createEmployeeUser, isUsernameAvailable } from '../../services/adminAut
 import { useCompany } from '../../context/CompanyContext';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 
 const AddEmployee = () => {
     const { selectedCompanyId } = useCompany();
@@ -22,6 +23,10 @@ const AddEmployee = () => {
     });
     const [showPassword, setShowPassword] = useState(false);
     const [usernameStatus, setUsernameStatus] = useState({ checking: false, available: null, message: '' });
+    
+    // Bulk Upload State
+    const [isBulkUploading, setIsBulkUploading] = useState(false);
+    const [bulkProgress, setBulkProgress] = useState({ total: 0, current: 0, success: 0, failed: 0 });
 
     const handleChange = (e) => {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -142,23 +147,185 @@ const AddEmployee = () => {
         } catch (error) {
             console.error('❌ Error adding employee:', error);
             toast.error(error.message || "حدث خطأ أثناء إضافة الموظف");
-        } finally {
             setLoading(false);
+        }
+    };
+
+    const handleFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (!selectedCompanyId) {
+            toast.error("يرجى اختيار شركة أولاً");
+            return;
+        }
+
+        setIsBulkUploading(true);
+        setBulkProgress({ total: 0, current: 0, success: 0, failed: 0 });
+
+        try {
+            const reader = new FileReader();
+            reader.onload = async (evt) => {
+                try {
+                    const bstr = evt.target.result;
+                    const wb = XLSX.read(bstr, { type: 'binary' });
+                    const wsname = wb.SheetNames[0];
+                    const ws = wb.Sheets[wsname];
+                    const data = XLSX.utils.sheet_to_json(ws);
+
+                    if (data.length === 0) {
+                        toast.error("الملف فارغ");
+                        setIsBulkUploading(false);
+                        return;
+                    }
+
+                    setBulkProgress(prev => ({ ...prev, total: data.length }));
+
+                    let successCount = 0;
+                    let failedCount = 0;
+
+                    for (let i = 0; i < data.length; i++) {
+                        const row = data[i];
+                        
+                        // Extract values trying English and Arabic keys flexibly
+                        const name = row['Name'] || row['name'] || row['الاسم'] || row['الاسم الرباعي'] || row['اسم الموظف'];
+                        const national_id = row['National ID'] || row['national_id'] || row['الهوية'] || row['الهوية الوطنية'] || row['رقم الهوية'] || row['الإقامة'];
+                        const email = row['Email'] || row['email'] || row['البريد'] || row['البريد الإلكتروني'];
+                        const phone = row['Phone'] || row['phone'] || row['الجوال'] || row['رقم الجوال'] || row['الهاتف'];
+                        const job_title = row['Job Title'] || row['job_title'] || row['المسمى الوظيفي'] || row['الوظيفة'];
+                        const salary = row['Salary'] || row['salary'] || row['الراتب'] || row['المرتب'];
+                        const job_skills = row['Job Skills'] || row['job_skills'] || row['المهارات'] || row['المهارات الوظيفية'];
+                        const username = row['Username'] || row['username'] || row['اسم المستخدم'] || row['اليوزر'];
+                        const password = row['Password'] || row['password'] || row['كلمة المرور'] || row['الرقم السري'] || row['الباسورد'];
+
+                        if (!name || !username || !password || !phone || !job_title || !salary) {
+                            failedCount++;
+                            setBulkProgress(prev => ({ ...prev, current: prev.current + 1, failed: failedCount }));
+                            continue;
+                        }
+
+                        try {
+                            const usernameAvailable = await isUsernameAvailable(username);
+                            if (!usernameAvailable) {
+                                failedCount++;
+                                setBulkProgress(prev => ({ ...prev, current: prev.current + 1, failed: failedCount }));
+                                continue;
+                            }
+
+                            const userEmail = email || `${username}@system.local`;
+                            const { success, userId } = await createEmployeeUser({
+                                username,
+                                password: String(password),
+                                email: userEmail
+                            });
+
+                            if (!success) {
+                                failedCount++;
+                                setBulkProgress(prev => ({ ...prev, current: prev.current + 1, failed: failedCount }));
+                                continue;
+                            }
+
+                            const employeeData = {
+                                name,
+                                phone: String(phone),
+                                email: userEmail,
+                                national_id: national_id ? String(national_id) : null,
+                                job_title,
+                                salary: parseFloat(salary) || 0,
+                                job_skills: job_skills || '',
+                                company_id: selectedCompanyId,
+                                user_id: userId
+                            };
+
+                            const { error: employeeError } = await supabase
+                                .from('employees')
+                                .insert([employeeData]);
+
+                            if (employeeError) {
+                                failedCount++;
+                            } else {
+                                successCount++;
+                            }
+                        } catch (err) {
+                            failedCount++;
+                        }
+
+                        setBulkProgress(prev => ({ ...prev, current: prev.current + 1, success: successCount, failed: failedCount }));
+                    }
+
+                    toast.success(`تم الانتهاء! نجاح: ${successCount}، فشل: ${failedCount}`, { duration: 6000 });
+                } catch (error) {
+                    console.error("Error parsing file:", error);
+                    toast.error("حدث خطأ أثناء معالجة الملف");
+                } finally {
+                    setIsBulkUploading(false);
+                    e.target.value = ''; // Reset file input
+                }
+            };
+            reader.readAsBinaryString(file);
+        } catch (error) {
+            console.error("Error reading file:", error);
+            toast.error("حدث خطأ أثناء قراءة الملف");
+            setIsBulkUploading(false);
+            e.target.value = '';
         }
     };
 
     return (
         <div className="max-w-4xl mx-auto space-y-8">
             <div className="bg-white p-8 rounded-2xl shadow-sm border border-zinc-100">
-                <div className="flex items-center gap-4 mb-8">
-                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                        <span className="material-symbols-outlined">person_add</span>
+                <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                            <span className="material-symbols-outlined">person_add</span>
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold headline-font text-zinc-900">إضافة موظف جديد</h2>
+                            <p className="text-sm text-zinc-500">أدخل بيانات الموظف الأساسية والمعلومات الوظيفية</p>
+                        </div>
                     </div>
-                    <div>
-                        <h2 className="text-xl font-bold headline-font text-zinc-900">إضافة موظف جديد</h2>
-                        <p className="text-sm text-zinc-500">أدخل بيانات الموظف الأساسية والمعلومات الوظيفية</p>
+                    
+                    {/* Bulk Upload Button */}
+                    <div className="relative">
+                        <input 
+                            type="file" 
+                            accept=".xlsx, .xls, .csv" 
+                            onChange={handleFileUpload} 
+                            disabled={isBulkUploading}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed" 
+                        />
+                        <button 
+                            disabled={isBulkUploading}
+                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all ${
+                                isBulkUploading 
+                                ? 'bg-zinc-100 text-zinc-400' 
+                                : 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200'
+                            }`}
+                        >
+                            <span className="material-symbols-outlined text-sm">
+                                {isBulkUploading ? 'hourglass_empty' : 'upload_file'}
+                            </span>
+                            {isBulkUploading ? 'جاري الرفع...' : 'رفع ملف Excel / CSV'}
+                        </button>
                     </div>
                 </div>
+
+                {/* Bulk Upload Progress */}
+                {isBulkUploading && (
+                    <div className="mb-8 p-4 bg-zinc-50 border border-zinc-200 rounded-xl space-y-3">
+                        <div className="flex justify-between text-sm font-bold text-zinc-700">
+                            <span>جاري معالجة الموظفين...</span>
+                            <span>{bulkProgress.current} / {bulkProgress.total}</span>
+                        </div>
+                        <div className="w-full bg-zinc-200 rounded-full h-2.5 overflow-hidden">
+                            <div className="bg-primary h-2.5 rounded-full transition-all duration-300" style={{ width: `${(bulkProgress.current / (bulkProgress.total || 1)) * 100}%` }}></div>
+                        </div>
+                        <div className="flex gap-4 text-xs font-bold">
+                            <span className="text-green-600">نجاح: {bulkProgress.success}</span>
+                            <span className="text-red-600">فشل: {bulkProgress.failed}</span>
+                        </div>
+                    </div>
+                )}
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Personal Information Section */}

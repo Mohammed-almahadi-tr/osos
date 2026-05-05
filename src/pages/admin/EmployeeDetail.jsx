@@ -11,6 +11,12 @@ const EmployeeDetail = () => {
     const [employee, setEmployee] = useState(null);
     const [attendance, setAttendance] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [selectedMonth, setSelectedMonth] = useState(() => {
+        const today = new Date();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const yyyy = today.getFullYear();
+        return `${yyyy}-${mm}`;
+    });
     
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingRecord, setEditingRecord] = useState(null);
@@ -19,7 +25,7 @@ const EmployeeDetail = () => {
 
     useEffect(() => {
         fetchEmployeeData();
-    }, [id]);
+    }, [id, selectedMonth]);
 
     const fetchEmployeeData = async () => {
         setLoading(true);
@@ -35,14 +41,50 @@ const EmployeeDetail = () => {
             setEmployee(empData);
 
             // Fetch attendance history
+            // Calculate start and end dates of the selected month
+            const [year, month] = selectedMonth.split('-');
+            const startDate = `${year}-${month}-01`;
+            
+            // Get the last day of the month
+            const lastDay = new Date(year, month, 0).getDate();
+            const endDate = `${year}-${month}-${lastDay}`;
+
             const { data: attData, error: attError } = await supabase
                 .from('attendance')
                 .select('*')
                 .eq('employee_id', id)
+                .gte('date', startDate)
+                .lte('date', endDate)
                 .order('date', { ascending: false });
 
             if (attError) throw attError;
-            setAttendance(attData || []);
+            
+            // Generate full month dates array
+            const fullMonthAttendance = [];
+            for (let i = 1; i <= lastDay; i++) {
+                const currentDateStr = `${year}-${month}-${String(i).padStart(2, '0')}`;
+                
+                // Find if we have a record for this date
+                const existingRecord = (attData || []).find(r => r.date === currentDateStr);
+                
+                if (existingRecord) {
+                    fullMonthAttendance.push(existingRecord);
+                } else {
+                    // Push a placeholder absent record
+                    fullMonthAttendance.push({
+                        isAbsent: true,
+                        date: currentDateStr,
+                        check_in: null,
+                        check_out: null,
+                        percentage_of_achievement: null,
+                        employee_id: id
+                    });
+                }
+            }
+            
+            // Order descending (newest first)
+            fullMonthAttendance.reverse();
+            setAttendance(fullMonthAttendance);
         } catch (error) {
             console.error('Error fetching employee details:', error);
             toast.error('حدث خطأ أثناء جلب بيانات الموظف');
@@ -73,10 +115,10 @@ const EmployeeDetail = () => {
         const attendanceRows = attendance.map(rec => {
             return [
                 rec.date,
-                formatTime(rec.check_in),
-                formatTime(rec.check_out),
-                calculateHours(rec.check_in, rec.check_out),
-                rec.percentage_of_achievement ? `${rec.percentage_of_achievement}%` : '-'
+                rec.isAbsent ? '00:00' : formatTime(rec.check_in),
+                rec.isAbsent ? '00:00' : formatTime(rec.check_out),
+                rec.isAbsent ? '0.0' : calculateHours(rec.check_in, rec.check_out),
+                rec.isAbsent ? 'غائب' : (rec.percentage_of_achievement ? `${rec.percentage_of_achievement}%` : '-')
             ];
         });
 
@@ -120,16 +162,37 @@ const EmployeeDetail = () => {
             const checkOutIso = editForm.check_out ? new Date(`${dateStr}T${editForm.check_out}:00`).toISOString() : null;
             const percentage = editForm.percentage ? parseFloat(editForm.percentage) : null;
 
-            const { error } = await supabase
-                .from('attendance')
-                .update({
-                    check_in: checkInIso,
-                    check_out: checkOutIso,
-                    percentage_of_achievement: percentage
-                })
-                .eq('id', editingRecord.id);
+            if (editingRecord.id) {
+                const { error } = await supabase
+                    .from('attendance')
+                    .update({
+                        check_in: checkInIso,
+                        check_out: checkOutIso,
+                        percentage_of_achievement: percentage
+                    })
+                    .eq('id', editingRecord.id);
 
-            if (error) throw error;
+                if (error) throw error;
+            } else {
+                // It's an absent day, so insert a new record
+                if (!checkInIso || !checkOutIso) {
+                    toast.error('يرجى إدخال أوقات الحضور والانصراف لتسجيل يوم جديد');
+                    setSaving(false);
+                    return;
+                }
+                const { error } = await supabase
+                    .from('attendance')
+                    .insert([{
+                        employee_id: id,
+                        company_id: employee.company_id,
+                        date: dateStr,
+                        check_in: checkInIso,
+                        check_out: checkOutIso,
+                        percentage_of_achievement: percentage
+                    }]);
+
+                if (error) throw error;
+            }
 
             toast.success('تم تحديث السجل بنجاح');
             setIsEditModalOpen(false);
@@ -156,8 +219,9 @@ const EmployeeDetail = () => {
     };
 
     // Calculate Average Achievement
-    const averageAchievement = attendance.length > 0
-        ? attendance.reduce((acc, curr) => acc + (curr.percentage_of_achievement || 0), 0) / attendance.length
+    const presentDays = attendance.filter(r => !r.isAbsent && r.percentage_of_achievement != null);
+    const averageAchievement = presentDays.length > 0
+        ? presentDays.reduce((acc, curr) => acc + curr.percentage_of_achievement, 0) / presentDays.length
         : 0;
 
     if (loading || !employee) {
@@ -174,10 +238,18 @@ const EmployeeDetail = () => {
                     </button>
                     <h2 className="text-xl font-bold headline-font text-zinc-900">تفاصيل الموظف</h2>
                 </div>
-                <button onClick={handleExportExcel} className="bg-primary hover:opacity-90 text-white font-bold px-4 py-2.5 rounded-xl transition-opacity flex items-center gap-2 shadow-lg shadow-primary/20">
-                    <span className="material-symbols-outlined text-sm">download</span>
-                    تصدير
-                </button>
+                <div className="flex items-center gap-4">
+                    <input 
+                        type="month" 
+                        value={selectedMonth}
+                        onChange={(e) => setSelectedMonth(e.target.value)}
+                        className="bg-surface-container border-none rounded-xl px-4 py-2.5 font-bold text-zinc-700 focus:ring-2 focus:ring-primary/20"
+                    />
+                    <button onClick={handleExportExcel} className="bg-primary hover:opacity-90 text-white font-bold px-4 py-2.5 rounded-xl transition-opacity flex items-center gap-2 shadow-lg shadow-primary/20">
+                        <span className="material-symbols-outlined text-sm">download</span>
+                        تصدير
+                    </button>
+                </div>
             </div>
 
             {/* Profile Card */}
@@ -247,16 +319,19 @@ const EmployeeDetail = () => {
                         </thead>
                         <tbody className="divide-y divide-zinc-100">
                             {attendance.length === 0 ? (
-                                <tr><td colSpan="6" className="text-center py-10 text-zinc-500">لا يوجد سجلات حضور</td></tr>
+                                <tr><td colSpan="6" className="text-center py-10 text-zinc-500">لا يوجد سجلات في هذا الشهر</td></tr>
                             ) : (
                                 attendance.map((rec) => (
-                                    <tr key={rec.id} className="hover:bg-zinc-50 transition-colors">
-                                        <td className="px-6 py-4 font-bold text-zinc-900">{rec.date}</td>
-                                        <td className="px-6 py-4 text-zinc-700">{formatTime(rec.check_in)}</td>
-                                        <td className="px-6 py-4 text-zinc-700">{formatTime(rec.check_out)}</td>
-                                        <td className="px-6 py-4 font-bold text-primary">{calculateHours(rec.check_in, rec.check_out)} ساعة</td>
+                                    <tr key={rec.id || rec.date} className={`transition-colors ${rec.isAbsent ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-zinc-50'}`}>
+                                        <td className="px-6 py-4 font-bold text-zinc-900">
+                                            {rec.date}
+                                            {rec.isAbsent && <span className="mr-2 text-xs bg-red-100 text-red-700 px-2 py-1 rounded-md">غائب</span>}
+                                        </td>
+                                        <td className="px-6 py-4 text-zinc-700">{rec.isAbsent ? '00:00' : formatTime(rec.check_in)}</td>
+                                        <td className="px-6 py-4 text-zinc-700">{rec.isAbsent ? '00:00' : formatTime(rec.check_out)}</td>
+                                        <td className="px-6 py-4 font-bold text-primary">{rec.isAbsent ? '0.0' : calculateHours(rec.check_in, rec.check_out)} ساعة</td>
                                         <td className="px-6 py-4 font-bold text-green-600">
-                                            {rec.percentage_of_achievement ? `${rec.percentage_of_achievement}%` : '-'}
+                                            {rec.isAbsent ? '-' : (rec.percentage_of_achievement ? `${rec.percentage_of_achievement}%` : '-')}
                                         </td>
                                         <td className="px-6 py-4 text-center">
                                             <button 

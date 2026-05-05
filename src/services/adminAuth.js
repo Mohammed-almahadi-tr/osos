@@ -1,4 +1,16 @@
-import { supabase } from './supabase';
+import { supabase, supabaseUrl, supabaseAnonKey } from './supabase';
+import { createClient } from '@supabase/supabase-js';
+
+// Create a secondary Supabase client that doesn't persist sessions
+// This ensures that when the admin creates a new employee user,
+// the admin's own session is not overwritten or logged out.
+const adminSupabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+    detectSessionInUrl: false
+  }
+});
 
 /**
  * Admin service for creating employee user accounts
@@ -20,8 +32,8 @@ export async function createEmployeeUser({ username, password, email }) {
     
     console.log('🔐 Creating employee user account:', { username, email: userEmail });
 
-    // Create the user account
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    // Create the user account using the admin client so it doesn't log out the current admin
+    const { data: authData, error: authError } = await adminSupabase.auth.signUp({
       email: userEmail,
       password: password,
       options: {
