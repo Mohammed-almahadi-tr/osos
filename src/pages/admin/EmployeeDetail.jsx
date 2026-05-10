@@ -184,7 +184,6 @@ const EmployeeDetail = () => {
                     .from('attendance')
                     .insert([{
                         employee_id: id,
-                        company_id: employee.company_id,
                         date: dateStr,
                         check_in: checkInIso,
                         check_out: checkOutIso,

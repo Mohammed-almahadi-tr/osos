@@ -16,19 +16,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
-    flowType: 'pkce'
-  },
-  global: {
-    headers: {
-      'x-application-name': 'osos-attendance-system'
-    }
+    // Removed flowType: 'pkce' — not needed for email/password auth and causes delays
   },
   db: {
     schema: 'public'
-  },
-  realtime: {
-    params: {
-      eventsPerSecond: 10
-    }
   }
 });

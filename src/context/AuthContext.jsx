@@ -8,96 +8,105 @@ export const useAuth = () => {
     return useContext(AuthContext);
 };
 
+// Helper: wrap any promise with a timeout
+const withTimeout = (promise, ms) => {
+    return Promise.race([
+        promise,
+        new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('TIMEOUT')), ms)
+        )
+    ]);
+};
+
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    const fetchProfile = async (userId) => {
+        console.log('📋 Fetching profile for:', userId);
+        try {
+            const result = await withTimeout(
+                supabase
+                    .from('profiles')
+                    .select('id, username, role, created_at')
+                    .eq('id', userId)
+                    .single(),
+                8000 // 8 second timeout
+            );
+
+            const { data, error } = result;
+
+            if (error) {
+                console.error('❌ Profile fetch error:', error.message, error.code, error.details);
+
+                if (error.code === 'PGRST116') {
+                    toast.error('لم يتم العثور على ملف تعريف لهذا المستخدم. يرجى مراجعة المسؤول.');
+                } else {
+                    toast.error(`خطأ في جلب بيانات المستخدم: ${error.message}`);
+                }
+
+                setProfile(null);
+                setUser(null);
+                setLoading(false);
+                return;
+            }
+
+            console.log('✅ Profile data received:', data);
+
+            if (!data.role || (data.role !== 'admin' && data.role !== 'employee')) {
+                console.error('❌ Invalid role:', data.role);
+                toast.error('هذا الحساب ليس لديه صلاحيات الدخول المحددة.');
+                setProfile(null);
+                setUser(null);
+                await supabase.auth.signOut();
+                setLoading(false);
+                return;
+            }
+
+            console.log('✅ Profile loaded:', { username: data.username, role: data.role });
+            setProfile(data);
+            setLoading(false);
+        } catch (err) {
+            if (err.message === 'TIMEOUT') {
+                console.error('❌ Profile fetch TIMED OUT after 8 seconds');
+                console.error('❌ This means the profiles table query is hanging.');
+                console.error('❌ Check Supabase Dashboard → SQL Editor and run:');
+                console.error('   SELECT * FROM profiles WHERE id = \'' + userId + '\';');
+                toast.error('انتهت مهلة الاتصال بقاعدة البيانات. تحقق من إعدادات RLS.');
+            } else {
+                console.error('❌ Unexpected error:', err);
+            }
+
+            setProfile(null);
+            setUser(null);
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
         let isMounted = true;
-        let timeoutId = null;
-        let maxTimeoutId = null;
-        
-        // Initial session fetch
-        const fetchSession = async () => {
-            try {
-                // Set a warning timeout for slow connections
-                timeoutId = setTimeout(() => {
-                    if (!isMounted) return;
-                    console.warn('⚠️ Connection to Supabase is taking longer than expected...');
-                }, 5000);
 
-                // Set a maximum timeout to prevent infinite loading
-                maxTimeoutId = setTimeout(() => {
-                    if (!isMounted) return;
-                    console.error('❌ Connection timeout. Proceeding to login page.');
-                    setLoading(false);
-                }, 10000); // 10 seconds max
+        console.log('🔄 AuthProvider mounting...');
 
-                const { data: { session }, error } = await supabase.auth.getSession();
-                
-                if (timeoutId) {
-                    clearTimeout(timeoutId);
-                    timeoutId = null;
-                }
-                
-                if (maxTimeoutId) {
-                    clearTimeout(maxTimeoutId);
-                    maxTimeoutId = null;
-                }
-
-                if (!isMounted) return;
-                
-                if (error) {
-                    console.error('❌ Session fetch error:', error.message);
-                    setLoading(false);
-                    return;
-                }
-                
-                if (session?.user) {
-                    setUser(session.user);
-                    await fetchProfile(session.user.id);
-                } else {
-                    setLoading(false);
-                }
-            } catch (error) {
-                if (timeoutId) {
-                    clearTimeout(timeoutId);
-                    timeoutId = null;
-                }
-                
-                if (maxTimeoutId) {
-                    clearTimeout(maxTimeoutId);
-                    maxTimeoutId = null;
-                }
-                
-                if (!isMounted) return;
-                
-                // Handle lock errors gracefully
-                if (error.message && error.message.toLowerCase().includes('lock')) {
-                    console.warn('⚠️ Lock error detected, clearing session:', error.message);
-                    setUser(null);
-                    setProfile(null);
-                    setLoading(false);
-                    return;
-                }
-
-                console.error('❌ Unexpected error during session fetch:', error);
-                setLoading(false);
-            }
-        };
-
-        fetchSession();
-
-        // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (!isMounted) return;
-            
-            console.log('🔐 Auth state changed:', event);
-            
+
+            console.log('🔐 Auth event:', event, '| User:', session?.user?.email || 'none');
+
+            if (event === 'SIGNED_OUT') {
+                setUser(null);
+                setProfile(null);
+                setLoading(false);
+                return;
+            }
+
             if (session?.user) {
                 setUser(session.user);
-                await fetchProfile(session.user.id);
+
+                if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+                    await fetchProfile(session.user.id);
+                }
             } else {
                 setUser(null);
                 setProfile(null);
@@ -105,59 +114,19 @@ export const AuthProvider = ({ children }) => {
             }
         });
 
+        // Safety net
+        const safetyTimeout = setTimeout(() => {
+            if (!isMounted) return;
+            console.warn('⚠️ Safety timeout — forcing loading to stop.');
+            setLoading(false);
+        }, 15000);
+
         return () => {
             isMounted = false;
-            if (timeoutId) clearTimeout(timeoutId);
-            if (maxTimeoutId) clearTimeout(maxTimeoutId);
-            if (subscription) subscription.unsubscribe();
+            clearTimeout(safetyTimeout);
+            subscription.unsubscribe();
         };
     }, []);
-
-    const fetchProfile = async (userId) => {
-        try {
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', userId)
-                .single();
-            
-            if (error) {
-                console.error('❌ Profile fetch error:', error.message);
-                
-                // If profile doesn't exist, user needs to have their role set
-                if (error.code === 'PGRST116') {
-                    console.error('❌ No profile found for user. The trigger may not have fired or role is not set.');
-                    toast.error('لم يتم العثور على ملف تعريف لهذا المستخدم. يرجى مراجعة المسؤول.');
-                } else {
-                    toast.error(`خطأ في جلب بيانات المستخدم: ${error.message}`);
-                }
-                
-                setProfile(null);
-                await supabase.auth.signOut();
-                setUser(null);
-                setLoading(false);
-                return;
-            }
-            
-            if (!data.role || (data.role !== 'admin' && data.role !== 'employee')) {
-                console.error('❌ Invalid or missing role in profile:', data);
-                toast.error('هذا الحساب ليس لديه صلاحيات الدخول المحددة (مسؤول أو موظف).');
-                setProfile(null);
-                await supabase.auth.signOut();
-                setUser(null);
-            } else {
-                console.log('✅ Profile loaded successfully:', { username: data.username, role: data.role });
-                setProfile(data);
-            }
-        } catch (error) {
-            console.error('❌ Unexpected error fetching profile:', error);
-            setProfile(null);
-            await supabase.auth.signOut();
-            setUser(null);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const value = {
         user,
