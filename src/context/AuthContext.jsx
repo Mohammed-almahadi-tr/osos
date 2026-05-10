@@ -23,27 +23,66 @@ export const AuthProvider = ({ children }) => {
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    const fetchProfile = async (userId) => {
-        console.log('📋 Fetching profile for:', userId);
-        try {
-            const result = await withTimeout(
-                supabase
-                    .from('profiles')
-                    .select('id, username, role, created_at')
-                    .eq('id', userId)
-                    .single(),
-                8000 // 8 second timeout
-            );
+    const fetchProfile = async (userId, retries = 2) => {
+        for (let attempt = 1; attempt <= retries; attempt++) {
+            try {
+                console.log(`📋 Fetching profile (attempt ${attempt}/${retries})...`);
 
-            const { data, error } = result;
+                const result = await withTimeout(
+                    supabase
+                        .from('profiles')
+                        .select('id, username, role, created_at')
+                        .eq('id', userId)
+                        .single(),
+                    10000 // 10 second timeout per attempt
+                );
 
-            if (error) {
-                console.error('❌ Profile fetch error:', error.message, error.code, error.details);
+                const { data, error } = result;
 
-                if (error.code === 'PGRST116') {
-                    toast.error('لم يتم العثور على ملف تعريف لهذا المستخدم. يرجى مراجعة المسؤول.');
+                if (error) {
+                    console.error('❌ Profile fetch error:', error.message);
+
+                    if (error.code === 'PGRST116') {
+                        toast.error('لم يتم العثور على ملف تعريف لهذا المستخدم.');
+                    } else {
+                        toast.error(`خطأ في جلب بيانات المستخدم: ${error.message}`);
+                    }
+
+                    setProfile(null);
+                    setUser(null);
+                    setLoading(false);
+                    return;
+                }
+
+                if (!data.role || (data.role !== 'admin' && data.role !== 'employee')) {
+                    console.error('❌ Invalid role:', data.role);
+                    toast.error('هذا الحساب ليس لديه صلاحيات الدخول المحددة.');
+                    setProfile(null);
+                    setUser(null);
+                    await supabase.auth.signOut();
+                    setLoading(false);
+                    return;
+                }
+
+                console.log('✅ Profile loaded:', { username: data.username, role: data.role });
+                setProfile(data);
+                setLoading(false);
+                return; // Success — exit the retry loop
+
+            } catch (err) {
+                if (err.message === 'TIMEOUT') {
+                    console.warn(`⏳ Profile fetch timed out (attempt ${attempt}/${retries})`);
+
+                    if (attempt < retries) {
+                        console.log('🔄 Retrying...');
+                        continue; // Try again
+                    }
+
+                    // All retries exhausted
+                    console.error('❌ All profile fetch attempts timed out.');
+                    toast.error('تعذر الاتصال بقاعدة البيانات. يرجى تحديث الصفحة.');
                 } else {
-                    toast.error(`خطأ في جلب بيانات المستخدم: ${error.message}`);
+                    console.error('❌ Unexpected error:', err);
                 }
 
                 setProfile(null);
@@ -51,43 +90,11 @@ export const AuthProvider = ({ children }) => {
                 setLoading(false);
                 return;
             }
-
-            console.log('✅ Profile data received:', data);
-
-            if (!data.role || (data.role !== 'admin' && data.role !== 'employee')) {
-                console.error('❌ Invalid role:', data.role);
-                toast.error('هذا الحساب ليس لديه صلاحيات الدخول المحددة.');
-                setProfile(null);
-                setUser(null);
-                await supabase.auth.signOut();
-                setLoading(false);
-                return;
-            }
-
-            console.log('✅ Profile loaded:', { username: data.username, role: data.role });
-            setProfile(data);
-            setLoading(false);
-        } catch (err) {
-            if (err.message === 'TIMEOUT') {
-                console.error('❌ Profile fetch TIMED OUT after 8 seconds');
-                console.error('❌ This means the profiles table query is hanging.');
-                console.error('❌ Check Supabase Dashboard → SQL Editor and run:');
-                console.error('   SELECT * FROM profiles WHERE id = \'' + userId + '\';');
-                toast.error('انتهت مهلة الاتصال بقاعدة البيانات. تحقق من إعدادات RLS.');
-            } else {
-                console.error('❌ Unexpected error:', err);
-            }
-
-            setProfile(null);
-            setUser(null);
-            setLoading(false);
         }
     };
 
     useEffect(() => {
         let isMounted = true;
-
-        console.log('🔄 AuthProvider mounting...');
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (!isMounted) return;
@@ -114,12 +121,12 @@ export const AuthProvider = ({ children }) => {
             }
         });
 
-        // Safety net
+        // Safety net: if nothing resolves within 25 seconds, stop loading
         const safetyTimeout = setTimeout(() => {
             if (!isMounted) return;
             console.warn('⚠️ Safety timeout — forcing loading to stop.');
             setLoading(false);
-        }, 15000);
+        }, 25000);
 
         return () => {
             isMounted = false;
