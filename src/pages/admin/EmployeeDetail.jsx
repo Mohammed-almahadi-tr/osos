@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../services/supabase';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
+import { PDFDocument } from 'pdf-lib';
+import fontkit from '@pdf-lib/fontkit';
 
 const EmployeeDetail = () => {
     const { id } = useParams();
@@ -22,6 +24,7 @@ const EmployeeDetail = () => {
     const [editingRecord, setEditingRecord] = useState(null);
     const [editForm, setEditForm] = useState({ check_in: '', check_out: '', percentage: '' });
     const [saving, setSaving] = useState(false);
+    const [pdfExporting, setPdfExporting] = useState(false);
 
     useEffect(() => {
         fetchEmployeeData();
@@ -131,7 +134,165 @@ const EmployeeDetail = () => {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "تقرير الموظف");
         
-        XLSX.writeFile(workbook, `تقرير_${employee.name.replace(/\s+/g, '_')}.xlsx`);
+        // Write to blob and trigger download with explicit extension
+        const wbOut = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([wbOut], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = URL.createObjectURL(blob);
+        
+        const safeName = (employee.name || 'Employee').replace(/[\\/:*?"<>|]/g, '-').trim();
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `${safeName}_Attendance.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        
+        setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 100);
+    };
+
+    // ─── PDF Export ─────────────────────────────────────────────
+    const exportToPDF = async () => {
+        if (!employee) return;
+        setPdfExporting(true);
+        try {
+            // ── Layout coordinates (tweak these to match osos_paper.pdf blanks) ──
+            const PAGE_WIDTH = 595;  // A4 width in points
+
+            // Employee info positions (X from LEFT edge, Y from BOTTOM edge)
+            const NAME_X = 150;
+            const NAME_Y = 680;
+            const JOB_TITLE_X = 150;
+            const JOB_TITLE_Y = 655;
+            const NATIONAL_ID_X = 150;
+            const NATIONAL_ID_Y = 630;
+            const MONTH_X = 400;
+            const MONTH_Y = 680;
+
+            // Attendance table positions
+            const TABLE_START_Y = 580;
+            const TABLE_ROW_HEIGHT = 18;
+            const COL_DATE_X = 480;
+            const COL_CHECKIN_X = 400;
+            const COL_CHECKOUT_X = 320;
+            const COL_HOURS_X = 240;
+            const COL_ACHIEVEMENT_X = 160;
+            const COL_STATUS_X = 80;
+
+            const FONT_SIZE_LABEL = 10;
+            const FONT_SIZE_DATA = 9;
+
+            // ── Fetch fresh data from Supabase ──
+            const { data: empData, error: empError } = await supabase
+                .from('employees')
+                .select('*')
+                .eq('id', id)
+                .single();
+            if (empError) throw empError;
+
+            const [year, month] = selectedMonth.split('-');
+            const startDate = `${year}-${month}-01`;
+            const lastDay = new Date(year, month, 0).getDate();
+            const endDate = `${year}-${month}-${lastDay}`;
+
+            const { data: attData, error: attError } = await supabase
+                .from('attendance')
+                .select('*')
+                .eq('employee_id', id)
+                .gte('date', startDate)
+                .lte('date', endDate)
+                .order('date', { ascending: true });
+            if (attError) throw attError;
+
+            // Build full month array (ascending for PDF)
+            const fullMonth = [];
+            for (let i = 1; i <= lastDay; i++) {
+                const dateStr = `${year}-${month}-${String(i).padStart(2, '0')}`;
+                const existing = (attData || []).find(r => r.date === dateStr);
+                fullMonth.push(existing || {
+                    isAbsent: true,
+                    date: dateStr,
+                    check_in: null,
+                    check_out: null,
+                    percentage_of_achievement: null,
+                });
+            }
+
+            // ── Load assets ──
+            const pdfBytes = await fetch('/osos_paper.pdf').then(res => res.arrayBuffer());
+            const fontBytes = await fetch('/fonts/Cairo-VariableFont_slnt,wght.ttf').then(res => res.arrayBuffer());
+
+            // ── Initialize PDF ──
+            const pdfDoc = await PDFDocument.load(pdfBytes);
+            pdfDoc.registerFontkit(fontkit);
+            const customFont = await pdfDoc.embedFont(fontBytes);
+
+            const page = pdfDoc.getPages()[0];
+
+            // Helper: draw right-aligned Arabic text
+            const drawRTL = (text, x, y, size = FONT_SIZE_DATA) => {
+                const textWidth = customFont.widthOfTextAtSize(text, size);
+                page.drawText(text, {
+                    x: x - textWidth,
+                    y,
+                    size,
+                    font: customFont,
+                });
+            };
+
+            // ── Draw employee info ──
+            drawRTL(empData.name || '', NAME_X + 200, NAME_Y, FONT_SIZE_LABEL);
+            drawRTL(empData.job_title || '', JOB_TITLE_X + 200, JOB_TITLE_Y, FONT_SIZE_LABEL);
+            drawRTL(empData.national_id || '', NATIONAL_ID_X + 200, NATIONAL_ID_Y, FONT_SIZE_LABEL);
+            drawRTL(`${year}-${month}`, MONTH_X + 100, MONTH_Y, FONT_SIZE_LABEL);
+
+            // ── Draw attendance rows ──
+            fullMonth.forEach((rec, idx) => {
+                const rowY = TABLE_START_Y - (idx * TABLE_ROW_HEIGHT);
+                if (rowY < 40) return; // stop if we run off the page
+
+                const dateText = rec.date;
+                const checkIn = rec.isAbsent ? '00:00' : formatTime(rec.check_in);
+                const checkOut = rec.isAbsent ? '00:00' : formatTime(rec.check_out);
+                const hours = rec.isAbsent ? '0.0' : calculateHours(rec.check_in, rec.check_out);
+                const achievement = rec.isAbsent ? '-' : (rec.percentage_of_achievement ? `${rec.percentage_of_achievement}%` : '-');
+                const status = rec.isAbsent ? 'غائب' : 'حاضر';
+
+                drawRTL(dateText, COL_DATE_X, rowY);
+                drawRTL(checkIn, COL_CHECKIN_X, rowY);
+                drawRTL(checkOut, COL_CHECKOUT_X, rowY);
+                drawRTL(hours, COL_HOURS_X, rowY);
+                drawRTL(achievement, COL_ACHIEVEMENT_X, rowY);
+                drawRTL(status, COL_STATUS_X, rowY);
+            });
+
+            // ── Trigger download ──
+            const pdfOutput = await pdfDoc.save();
+            const blob = new Blob([pdfOutput], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            
+            const safeName = (empData.name || 'Employee').replace(/[\\/:*?"<>|]/g, '-').trim();
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `${safeName}_Attendance.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+
+            toast.success('تم تصدير ملف PDF بنجاح');
+        } catch (error) {
+            console.error('Error exporting PDF:', error);
+            toast.error('حدث خطأ أثناء تصدير PDF');
+        } finally {
+            setPdfExporting(false);
+        }
     };
 
     const openEditModal = (record) => {
@@ -246,7 +407,15 @@ const EmployeeDetail = () => {
                     />
                     <button onClick={handleExportExcel} className="bg-primary hover:opacity-90 text-white font-bold px-4 py-2.5 rounded-xl transition-opacity flex items-center gap-2 shadow-lg shadow-primary/20">
                         <span className="material-symbols-outlined text-sm">download</span>
-                        تصدير
+                        تصدير Excel
+                    </button>
+                    <button
+                        onClick={exportToPDF}
+                        disabled={pdfExporting}
+                        className="bg-red-600 hover:opacity-90 text-white font-bold px-4 py-2.5 rounded-xl transition-opacity flex items-center gap-2 shadow-lg shadow-red-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <span className="material-symbols-outlined text-sm">{pdfExporting ? 'hourglass_empty' : 'picture_as_pdf'}</span>
+                        {pdfExporting ? 'جاري التصدير...' : 'تصدير PDF'}
                     </button>
                 </div>
             </div>
