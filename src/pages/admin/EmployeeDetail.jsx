@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../services/supabase';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 
 const EmployeeDetail = () => {
@@ -158,32 +158,6 @@ const EmployeeDetail = () => {
         if (!employee) return;
         setPdfExporting(true);
         try {
-            // ── Layout coordinates (tweak these to match osos_paper.pdf blanks) ──
-            const PAGE_WIDTH = 595;  // A4 width in points
-
-            // Employee info positions (X from LEFT edge, Y from BOTTOM edge)
-            const NAME_X = 150;
-            const NAME_Y = 680;
-            const JOB_TITLE_X = 150;
-            const JOB_TITLE_Y = 655;
-            const NATIONAL_ID_X = 150;
-            const NATIONAL_ID_Y = 630;
-            const MONTH_X = 400;
-            const MONTH_Y = 680;
-
-            // Attendance table positions
-            const TABLE_START_Y = 580;
-            const TABLE_ROW_HEIGHT = 18;
-            const COL_DATE_X = 480;
-            const COL_CHECKIN_X = 400;
-            const COL_CHECKOUT_X = 320;
-            const COL_HOURS_X = 240;
-            const COL_ACHIEVEMENT_X = 160;
-            const COL_STATUS_X = 80;
-
-            const FONT_SIZE_LABEL = 10;
-            const FONT_SIZE_DATA = 9;
-
             // ── Fetch fresh data from Supabase ──
             const { data: empData, error: empError } = await supabase
                 .from('employees')
@@ -206,11 +180,20 @@ const EmployeeDetail = () => {
                 .order('date', { ascending: true });
             if (attError) throw attError;
 
-            // Build full month array (ascending for PDF)
+            // Build full month array & calculate average achievement
             const fullMonth = [];
+            let totalAchievement = 0;
+            let presentDaysCount = 0;
+
             for (let i = 1; i <= lastDay; i++) {
                 const dateStr = `${year}-${month}-${String(i).padStart(2, '0')}`;
                 const existing = (attData || []).find(r => r.date === dateStr);
+                
+                if (existing && !existing.isAbsent && existing.percentage_of_achievement != null) {
+                    totalAchievement += existing.percentage_of_achievement;
+                    presentDaysCount++;
+                }
+
                 fullMonth.push(existing || {
                     isAbsent: true,
                     date: dateStr,
@@ -220,53 +203,228 @@ const EmployeeDetail = () => {
                 });
             }
 
+            const calcAvg = presentDaysCount > 0 ? (totalAchievement / presentDaysCount).toFixed(1) : 0;
+            const companyName = "أُسس"; // Generic fallback as per requirements
+
             // ── Load assets ──
             const pdfBytes = await fetch('/osos_paper.pdf').then(res => res.arrayBuffer());
             const fontBytes = await fetch('/fonts/Cairo-VariableFont_slnt,wght.ttf').then(res => res.arrayBuffer());
 
-            // ── Initialize PDF ──
+            // ── Initialize PDF using template ──
             const pdfDoc = await PDFDocument.load(pdfBytes);
             pdfDoc.registerFontkit(fontkit);
             const customFont = await pdfDoc.embedFont(fontBytes);
 
-            const page = pdfDoc.getPages()[0];
-
-            // Helper: draw right-aligned Arabic text
-            const drawRTL = (text, x, y, size = FONT_SIZE_DATA) => {
-                const textWidth = customFont.widthOfTextAtSize(text, size);
-                page.drawText(text, {
-                    x: x - textWidth,
-                    y,
-                    size,
-                    font: customFont,
+            // Helper: draw bi-directional segment-based text
+            const drawRTL = (page, text, x, y, size = 12) => {
+                if (!text) return;
+                const str = String(text);
+                
+                // Split by contiguous English/number strings (e.g. "John Doe", "08:30", "2026-05-12")
+                const regex = /([A-Za-z0-9.:%/-]+(?:\s+[A-Za-z0-9.:%/-]+)*)/g;
+                const segments = str.split(regex).filter(Boolean);
+                
+                // Calculate total width of all segments
+                let totalWidth = 0;
+                const segWidths = segments.map(seg => {
+                    const w = customFont.widthOfTextAtSize(seg, size);
+                    totalWidth += w;
+                    return w;
+                });
+                
+                // Draw each segment from right to left (native RTL layout order)
+                let currentX = x;
+                segments.forEach((seg, index) => {
+                    const w = segWidths[index];
+                    page.drawText(seg, {
+                        x: currentX - w,
+                        y,
+                        size,
+                        font: customFont,
+                    });
+                    currentX -= w;
                 });
             };
 
-            // ── Draw employee info ──
-            drawRTL(empData.name || '', NAME_X + 200, NAME_Y, FONT_SIZE_LABEL);
-            drawRTL(empData.job_title || '', JOB_TITLE_X + 200, JOB_TITLE_Y, FONT_SIZE_LABEL);
-            drawRTL(empData.national_id || '', NATIONAL_ID_X + 200, NATIONAL_ID_Y, FONT_SIZE_LABEL);
-            drawRTL(`${year}-${month}`, MONTH_X + 100, MONTH_Y, FONT_SIZE_LABEL);
+            // Helper: draw bi-directional centered text inside a bounding box
+            const drawCenteredText = (page, text, rightBound, width, y, size) => {
+                const regex = /([A-Za-z0-9.:%/-]+(?:\s+[A-Za-z0-9.:%/-]+)*)/g;
+                const segments = String(text || '').split(regex).filter(Boolean);
+                
+                let totalW = 0;
+                const segWidths = segments.map(seg => {
+                    const w = customFont.widthOfTextAtSize(seg, size);
+                    totalW += w;
+                    return w;
+                });
 
-            // ── Draw attendance rows ──
-            fullMonth.forEach((rec, idx) => {
-                const rowY = TABLE_START_Y - (idx * TABLE_ROW_HEIGHT);
-                if (rowY < 40) return; // stop if we run off the page
+                let currentX = rightBound - (width / 2) + (totalW / 2);
+                segments.forEach((seg, index) => {
+                    const w = segWidths[index];
+                    page.drawText(seg, {
+                        x: currentX - w,
+                        y,
+                        size,
+                        font: customFont,
+                    });
+                    currentX -= w;
+                });
+            };
 
+            // ── PAGE 1: Employee Profile Details (Formal Form Structure) ──
+            const page1 = pdfDoc.getPages()[0];
+            
+            // ── PAGE 2: Copy the BLANK template page FIRST, before any drawing ──
+            const [pageTemplate] = await pdfDoc.copyPages(pdfDoc, [0]);
+            const page2 = pdfDoc.addPage(pageTemplate);
+            
+            // Outer Form Box dimensions (under the template header)
+            const boxX = 50;
+            const boxY = 150;
+            const boxWidth = 495;
+            const boxHeight = 530;
+            
+            // Draw Outer Box
+            page1.drawRectangle({
+                x: boxX,
+                y: boxY,
+                width: boxWidth,
+                height: boxHeight,
+                borderColor: rgb(0.2, 0.2, 0.2),
+                borderWidth: 1.5,
+            });
+
+            // 5 Rows for Employee Data (height 35 each)
+            const rowHeight = 35;
+            const startRowY = boxY + boxHeight - rowHeight; // 645
+
+            // Draw Horizontal lines for rows
+            for (let i = 1; i <= 5; i++) {
+                const lineY = startRowY - (i - 1) * rowHeight;
+                page1.drawLine({
+                    start: { x: boxX, y: lineY },
+                    end: { x: boxX + boxWidth, y: lineY },
+                    thickness: 1,
+                    color: rgb(0.2, 0.2, 0.2)
+                });
+            }
+
+            // Draw Vertical Divider between label and value columns
+            const labelColWidth = 140;
+            const dividerX = boxX + boxWidth - labelColWidth; // 405
+            page1.drawLine({
+                start: { x: dividerX, y: startRowY - (4 * rowHeight) }, // Down through Row 5
+                end: { x: dividerX, y: boxY + boxHeight },
+                thickness: 1,
+                color: rgb(0.2, 0.2, 0.2)
+            });
+
+            // Draw Row Labels (Right side)
+            const labelX = boxX + boxWidth - 15; // Padding from right edge
+            drawRTL(page1, "الشركة", labelX, startRowY + 10, 13);
+            drawRTL(page1, "اسم الموظف", labelX, startRowY - rowHeight + 10, 13);
+            drawRTL(page1, "المهمة", labelX, startRowY - (2 * rowHeight) + 10, 13);
+            drawRTL(page1, "الراتب", labelX, startRowY - (3 * rowHeight) + 10, 13);
+            drawRTL(page1, "نسبة الانجاز", labelX, startRowY - (4 * rowHeight) + 10, 13);
+
+            // Draw Row Values (Left side)
+            const valueX = dividerX - 15; // Padding from divider
+            drawRTL(page1, companyName, valueX, startRowY + 10, 13);
+            drawRTL(page1, empData.name || '', valueX, startRowY - rowHeight + 10, 13);
+            drawRTL(page1, empData.job_title || '', valueX, startRowY - (2 * rowHeight) + 10, 13);
+            drawRTL(page1, `${empData.salary || 0} ريال`, valueX, startRowY - (3 * rowHeight) + 10, 13);
+            drawRTL(page1, `${calcAvg}%`, valueX, startRowY - (4 * rowHeight) + 10, 13);
+
+            // "مهام الوظيفة" (Job Tasks) Section
+            const tasksSectionY = startRowY - (5 * rowHeight); // 470
+            
+            // Section Title inside the box
+            drawRTL(page1, "مهام الوظيفة", labelX, tasksSectionY - 25, 14);
+
+            // Draw separator line under title inside the box
+            page1.drawLine({
+                start: { x: boxX, y: tasksSectionY - 35 },
+                end: { x: boxX + boxWidth, y: tasksSectionY - 35 },
+                thickness: 1,
+                color: rgb(0.2, 0.2, 0.2)
+            });
+
+            // Draw Skills bullet points
+            const skillsStr = empData.job_skills || '';
+            const skills = skillsStr ? skillsStr.split(/[\n,]+/).map(s => s.trim()).filter(Boolean) : [];
+            let skillY = tasksSectionY - 60;
+
+            if (skills.length > 0) {
+                skills.forEach((skill) => {
+                    if (skillY > boxY + 20) { // Stay within box boundary
+                        drawRTL(page1, `•  ${skill}`, labelX - 10, skillY, 12);
+                        skillY -= 22;
+                    }
+                });
+            } else {
+                drawRTL(page1, "-", labelX - 10, skillY, 12);
+            }
+
+            // ── PAGE 2: Bordered Attendance Table ──
+
+            // Table Title
+            drawRTL(page2, "سجل الحضور والانصراف", 350, 610, 16);
+
+            const startX = 50;
+            let tableY = 580;
+            const tableRowHeight = 14; 
+            const colWidths = [70, 100, 100, 100, 100]; 
+            const tableWidth = colWidths.reduce((a, b) => a + b, 0); // 470
+
+            const headers = ["اليوم", "وقت الدخول", "وقت الخروج", "عدد الساعات", "نسبة الانجاز"];
+
+            const getColRightBound = (index) => {
+                let r = startX + tableWidth;
+                for (let j = 0; j < index; j++) {
+                    r -= colWidths[j];
+                }
+                return r;
+            };
+
+            // Draw Headers
+            headers.forEach((text, i) => {
+                const rBound = getColRightBound(i);
+                drawCenteredText(page2, text, rBound, colWidths[i], tableY - 11, 10);
+            });
+
+            // Header lines
+            page2.drawLine({ start: { x: startX, y: tableY }, end: { x: startX + tableWidth, y: tableY }, thickness: 1, color: rgb(0.2, 0.2, 0.2) });
+            page2.drawLine({ start: { x: startX, y: tableY - tableRowHeight }, end: { x: startX + tableWidth, y: tableY - tableRowHeight }, thickness: 1, color: rgb(0.2, 0.2, 0.2) });
+
+            let loopY = tableY - tableRowHeight;
+
+            fullMonth.forEach((rec) => {
                 const dateText = rec.date;
                 const checkIn = rec.isAbsent ? '00:00' : formatTime(rec.check_in);
                 const checkOut = rec.isAbsent ? '00:00' : formatTime(rec.check_out);
                 const hours = rec.isAbsent ? '0.0' : calculateHours(rec.check_in, rec.check_out);
                 const achievement = rec.isAbsent ? '-' : (rec.percentage_of_achievement ? `${rec.percentage_of_achievement}%` : '-');
-                const status = rec.isAbsent ? 'غائب' : 'حاضر';
 
-                drawRTL(dateText, COL_DATE_X, rowY);
-                drawRTL(checkIn, COL_CHECKIN_X, rowY);
-                drawRTL(checkOut, COL_CHECKOUT_X, rowY);
-                drawRTL(hours, COL_HOURS_X, rowY);
-                drawRTL(achievement, COL_ACHIEVEMENT_X, rowY);
-                drawRTL(status, COL_STATUS_X, rowY);
+                const rowData = [dateText, checkIn, checkOut, hours, achievement];
+
+                rowData.forEach((text, i) => {
+                    const rBound = getColRightBound(i);
+                    drawCenteredText(page2, text, rBound, colWidths[i], loopY - 11, 8);
+                });
+
+                // Row bottom line
+                page2.drawLine({ start: { x: startX, y: loopY - tableRowHeight }, end: { x: startX + tableWidth, y: loopY - tableRowHeight }, thickness: 1, color: rgb(0.2, 0.2, 0.2) });
+                
+                loopY -= tableRowHeight;
             });
+
+            // Draw Vertical Lines
+            let vx = startX + tableWidth;
+            page2.drawLine({ start: { x: vx, y: tableY }, end: { x: vx, y: loopY }, thickness: 1, color: rgb(0.2, 0.2, 0.2) });
+            for (let i = 0; i < colWidths.length; i++) {
+                vx -= colWidths[i];
+                page2.drawLine({ start: { x: vx, y: tableY }, end: { x: vx, y: loopY }, thickness: 1, color: rgb(0.2, 0.2, 0.2) });
+            }
 
             // ── Trigger download ──
             const pdfOutput = await pdfDoc.save();
@@ -277,7 +435,7 @@ const EmployeeDetail = () => {
             const a = document.createElement('a');
             a.style.display = 'none';
             a.href = url;
-            a.download = `${safeName}_Attendance.pdf`;
+            a.download = `${safeName}_سجل_الموظف.pdf`;
             document.body.appendChild(a);
             a.click();
             
