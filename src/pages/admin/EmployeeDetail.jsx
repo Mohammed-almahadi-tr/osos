@@ -375,7 +375,7 @@ const EmployeeDetail = () => {
             drawRTL(page, 'نسبة الانجاز :', labelX, topBoxY + 35 + 12, 13);
             drawRTL(page, `${calcAvg}%`, valueX, topBoxY + 35 + 12, 13);
 
-            drawRTL(page, 'الراتب :', labelX, topBoxY + 12, 13);
+            drawRTL(page, 'الراتب المستحق:', labelX, topBoxY + 12, 13);
             drawRTL(page, empData.salary ? `${empData.salary} ريال` : '-', valueX, topBoxY + 12, 13);
 
             // Job Skills Section
@@ -429,7 +429,7 @@ const EmployeeDetail = () => {
             });
 
             // Custom Column Widths
-            const colWidths = [135, 95, 75, 60, 60, 70]; // Sum = 495
+            const colWidths = [120, 90, 65, 55, 55, 50, 60]; // Sum = 495
 
             const getColRightBound = (index) => {
                 let r = boxX + boxWidth;
@@ -439,8 +439,8 @@ const EmployeeDetail = () => {
                 return r;
             };
 
-            // 5 vertical lines for 6 columns
-            for (let i = 0; i < 5; i++) {
+            // 6 vertical lines for 7 columns
+            for (let i = 0; i < 6; i++) {
                 const vx = getColRightBound(i) - colWidths[i];
                 page.drawLine({
                     start: { x: vx, y: bottomBoxY },
@@ -451,13 +451,14 @@ const EmployeeDetail = () => {
             }
 
             // Header and Data texts
-            const bottomHeaders = ["اسم الموظف", "رقم الهوية", "الشهر الحالي", "أيام الحضور", "أيام الغياب", "إجمالي الساعات"];
+            const bottomHeaders = ["اسم الموظف", "رقم الهوية", "الشهر الحالي", "أيام الحضور", "أيام الغياب", "الحالة", "إجمالي الساعات"];
             const bottomData = [
                 empData.name || '',
                 empData.national_id || '',
                 currentMonthString,
                 String(totalAttendance),
                 String(totalAbsence),
+                "نشط",
                 String(totalHours)
             ];
 
