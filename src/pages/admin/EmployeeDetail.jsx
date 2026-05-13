@@ -173,7 +173,7 @@ const EmployeeDetail = () => {
                 .select('name')
                 .eq('id', empData.company_id)
                 .single();
-                
+
             if (companyError) console.warn("Could not fetch company name", companyError);
 
             const [year, month] = selectedMonth.split('-');
@@ -361,6 +361,9 @@ const EmployeeDetail = () => {
 
             drawRTL(page, 'نسبة الانجاز :', labelX, topBoxY + 12, 13);
             drawRTL(page, `${calcAvg}%`, valueX, topBoxY + 12, 13);
+
+            drawRTL(page, 'الراتب :', labelX, topBoxY + 35 + 12, 13);
+            drawRTL(page, empData.salary || '', valueX, topBoxY + 35 + 12, 13);
 
             // Job Skills Section
             const skillsTitleY = topBoxY - 45; // Move title below top table
