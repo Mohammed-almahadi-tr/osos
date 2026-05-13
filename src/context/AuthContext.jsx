@@ -1,14 +1,32 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+/**
+ * @file AuthContext.jsx
+ * @description Provides global authentication state, session management, and extended profile data via Supabase.
+ */
+
+import { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { supabase } from '../services/supabase';
 import toast from 'react-hot-toast';
 
-const AuthContext = createContext();
+/**
+ * Global Context for Authentication.
+ * @type {React.Context<Object|null>}
+ */
+const AuthContext = createContext(null);
 
+/**
+ * Custom hook to consume the AuthContext safely.
+ * @returns {Object} The authentication context payload (user, profile, loading, helper methods).
+ */
 export const useAuth = () => {
     return useContext(AuthContext);
 };
 
-// Helper: wrap any promise with a timeout
+/**
+ * Helper function to wrap any Promise with a strict timeout execution.
+ * @param {Promise<any>} promise - The original promise to execute.
+ * @param {number} ms - Timeout duration in milliseconds before rejecting.
+ * @returns {Promise<any>} Resolves with the original promise result or rejects if the timeout is reached.
+ */
 const withTimeout = (promise, ms) => {
     return Promise.race([
         promise,
@@ -18,90 +36,147 @@ const withTimeout = (promise, ms) => {
     ]);
 };
 
+/**
+ * AuthProvider component that wraps the application to inject global authentication state.
+ * @param {Object} props - React component props.
+ * @param {React.ReactNode} props.children - Child components that require access to the auth context.
+ * @returns {JSX.Element} The AuthContext Provider wrapping children elements.
+ */
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [profile, setProfile] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
+    
+    // Track in-progress fetches to prevent duplicate/concurrent runs that cause Supabase lock theft
+    const fetchInProgress = useRef(false);
 
-    const fetchProfile = async (userId, retries = 2) => {
-        for (let attempt = 1; attempt <= retries; attempt++) {
-            try {
-                console.log(`📋 Fetching profile (attempt ${attempt}/${retries})...`);
+    /**
+     * Fetches the extended user profile from the database with robust retry and timeout logic.
+     * Wrapped in a strict try/catch/finally block to ensure graceful degradation.
+     * 
+     * @param {string} userId - The unique identifier of the authenticated user.
+     * @param {number} [retries=3] - The number of allowed attempts before failing.
+     * @returns {Promise<void>} Resolves when the profile fetch is completely resolved or fails securely.
+     */
+    const fetchProfile = async (userId, retries = 3) => {
+        // Prevent concurrent execution of fetchProfile which causes lock races
+        if (fetchInProgress.current) {
+            console.log('⏳ fetchProfile already in progress, skipping concurrent call.');
+            return;
+        }
+        fetchInProgress.current = true;
 
-                const result = await withTimeout(
-                    supabase
-                        .from('profiles')
-                        .select('id, username, role, created_at')
-                        .eq('id', userId)
-                        .single(),
-                    10000 // 10 second timeout per attempt
-                );
+        try {
+            for (let attempt = 1; attempt <= retries; attempt++) {
+                try {
+                    // Attempt to fetch the profile with a 10-second timeout to prevent infinite hanging
+                    console.log(`📋 Fetching profile (attempt ${attempt}/${retries})...`);
 
-                const { data, error } = result;
+                    const result = await withTimeout(
+                        supabase
+                            .from('profiles')
+                            .select('id, username, role, created_at')
+                            .eq('id', userId)
+                            .single(),
+                        10000 // 10 second timeout per attempt
+                    );
 
-                if (error) {
-                    console.error('❌ Profile fetch error:', error.message);
+                    const { data, error } = result;
 
-                    if (error.code === 'PGRST116') {
-                        toast.error('لم يتم العثور على ملف تعريف لهذا المستخدم.');
+                    if (error) {
+                        console.warn('⚠️ Profile fetch error:', error.message);
+
+                        if (error.message && error.message.includes('stole it')) {
+                            console.warn('🔄 Transient auth lock theft detected. Retrying safely...');
+                            if (attempt < retries) {
+                                // Add a longer delay to allow the competing token request to resolve and release the lock
+                                await new Promise(r => setTimeout(r, 1200));
+                                continue;
+                            }
+                            // If all retries fail, do not toast the messy lock error
+                            toast.error('تعذر مزامنة الجلسة مع الخادم بسبب تزاحم الطلبات.');
+                            setProfile(null);
+                            setUser(null);
+                            return; // Exit loop and function
+                        }
+
+                        if (error.code === 'PGRST116') {
+                            toast.error('لم يتم العثور على ملف تعريف لهذا المستخدم.');
+                        } else {
+                            toast.error(`خطأ في جلب بيانات المستخدم: ${error.message}`);
+                        }
+
+                        // Gracefully fallback on database error
+                        setProfile(null);
+                        setUser(null);
+                        return; // Exit loop and function
+                    }
+
+                    if (!data.role || (data.role !== 'admin' && data.role !== 'employee')) {
+                        console.warn('⚠️ Invalid role detected:', data.role);
+                        toast.error('هذا الحساب ليس لديه صلاحيات الدخول المحددة.');
+                        
+                        setProfile(null);
+                        setUser(null);
+                        await supabase.auth.signOut();
+                        return; // Exit loop and function
+                    }
+
+                    // Profile fetch successful
+                    console.log('✅ Profile loaded:', { username: data.username, role: data.role });
+                    setProfile(data);
+                    return; // Success — exit the loop and function
+
+                } catch (err) {
+                    if (err.message === 'TIMEOUT') {
+                        console.warn(`⏳ Profile fetch timed out (attempt ${attempt}/${retries})`);
+
+                        if (attempt < retries) {
+                            console.log('🔄 Retrying fetch...');
+                            continue; // Try again, loop continues
+                        }
+
+                        // All retries exhausted, gracefully fallback using console.warn instead of unhandled error
+                        console.warn('⚠️ All profile fetch attempts timed out. Falling back to unauthenticated state.');
+                        toast.error('تعذر الاتصال بقاعدة البيانات. يرجى تحديث الصفحة.');
                     } else {
-                        toast.error(`خطأ في جلب بيانات المستخدم: ${error.message}`);
+                        // Catching any other potential JS execution bugs during the fetch cycle
+                        console.warn('⚠️ Unexpected error during profile fetch:', err);
                     }
 
+                    // Terminal failure (either unexpected error or completely out of retries)
                     setProfile(null);
                     setUser(null);
-                    setLoading(false);
-                    return;
+                    return; // Exit loop and function
                 }
-
-                if (!data.role || (data.role !== 'admin' && data.role !== 'employee')) {
-                    console.error('❌ Invalid role:', data.role);
-                    toast.error('هذا الحساب ليس لديه صلاحيات الدخول المحددة.');
-                    setProfile(null);
-                    setUser(null);
-                    await supabase.auth.signOut();
-                    setLoading(false);
-                    return;
-                }
-
-                console.log('✅ Profile loaded:', { username: data.username, role: data.role });
-                setProfile(data);
-                setLoading(false);
-                return; // Success — exit the retry loop
-
-            } catch (err) {
-                if (err.message === 'TIMEOUT') {
-                    console.warn(`⏳ Profile fetch timed out (attempt ${attempt}/${retries})`);
-
-                    if (attempt < retries) {
-                        console.log('🔄 Retrying...');
-                        continue; // Try again
-                    }
-
-                    // All retries exhausted
-                    console.error('❌ All profile fetch attempts timed out.');
-                    toast.error('تعذر الاتصال بقاعدة البيانات. يرجى تحديث الصفحة.');
-                } else {
-                    console.error('❌ Unexpected error:', err);
-                }
-
-                setProfile(null);
-                setUser(null);
-                setLoading(false);
-                return;
             }
+        } catch (fatalError) {
+            // Outermost strict try/catch to prevent ANY unhandled rejections from escaping
+            console.warn('⚠️ Fatal error in profile fetching logic:', fatalError);
+            setProfile(null);
+            setUser(null);
+        } finally {
+            // Ensure loading state is explicitly disabled in all scenarios so the app never gets stuck on a loading screen
+            setLoading(false);
+            fetchInProgress.current = false;
         }
     };
 
+    /**
+     * Initializes global auth listener on component mount.
+     * Tracks login, logout, and token refresh events triggered by Supabase.
+     */
     useEffect(() => {
         let isMounted = true;
 
+        // Subscribing to Supabase authentication state changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (!isMounted) return;
 
             console.log('🔐 Auth event:', event, '| User:', session?.user?.email || 'none');
 
             if (event === 'SIGNED_OUT') {
+                // Clear context state immediately when the user signs out
                 setUser(null);
                 setProfile(null);
                 setLoading(false);
@@ -109,32 +184,37 @@ export const AuthProvider = ({ children }) => {
             }
 
             if (session?.user) {
+                // User is authenticated, anchor base user state
                 setUser(session.user);
 
+                // Fetch extended profile data if the session is initiating, logging in, or refreshing
                 if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
                     await fetchProfile(session.user.id);
                 }
             } else {
+                // No session user object found, fallback to logged out state
                 setUser(null);
                 setProfile(null);
                 setLoading(false);
             }
         });
 
-        // Safety net: if nothing resolves within 25 seconds, stop loading
+        // Safety net interval: if nothing resolves within 25 seconds, forcibly stop the loading overlay
         const safetyTimeout = setTimeout(() => {
             if (!isMounted) return;
-            console.warn('⚠️ Safety timeout — forcing loading to stop.');
+            console.warn('⚠️ Auth safety timeout reached — forcing loading spinner to stop.');
             setLoading(false);
         }, 25000);
 
         return () => {
+            // Cleanup phase on component unmount to prevent memory leaks and redundant fetches
             isMounted = false;
             clearTimeout(safetyTimeout);
             subscription.unsubscribe();
         };
     }, []);
 
+    // Construct the context payload exported to consuming components
     const value = {
         user,
         profile,

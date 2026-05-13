@@ -9,7 +9,7 @@ import fontkit from '@pdf-lib/fontkit';
 const EmployeeDetail = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    
+
     const [employee, setEmployee] = useState(null);
     const [attendance, setAttendance] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -19,7 +19,7 @@ const EmployeeDetail = () => {
         const yyyy = today.getFullYear();
         return `${yyyy}-${mm}`;
     });
-    
+
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingRecord, setEditingRecord] = useState(null);
     const [editForm, setEditForm] = useState({ check_in: '', check_out: '', percentage: '' });
@@ -39,7 +39,7 @@ const EmployeeDetail = () => {
                 .select('*')
                 .eq('id', id)
                 .single();
-            
+
             if (empError) throw empError;
             setEmployee(empData);
 
@@ -47,7 +47,7 @@ const EmployeeDetail = () => {
             // Calculate start and end dates of the selected month
             const [year, month] = selectedMonth.split('-');
             const startDate = `${year}-${month}-01`;
-            
+
             // Get the last day of the month
             const lastDay = new Date(year, month, 0).getDate();
             const endDate = `${year}-${month}-${lastDay}`;
@@ -61,15 +61,15 @@ const EmployeeDetail = () => {
                 .order('date', { ascending: false });
 
             if (attError) throw attError;
-            
+
             // Generate full month dates array
             const fullMonthAttendance = [];
             for (let i = 1; i <= lastDay; i++) {
                 const currentDateStr = `${year}-${month}-${String(i).padStart(2, '0')}`;
-                
+
                 // Find if we have a record for this date
                 const existingRecord = (attData || []).find(r => r.date === currentDateStr);
-                
+
                 if (existingRecord) {
                     fullMonthAttendance.push(existingRecord);
                 } else {
@@ -84,7 +84,7 @@ const EmployeeDetail = () => {
                     });
                 }
             }
-            
+
             // Order descending (newest first)
             fullMonthAttendance.reverse();
             setAttendance(fullMonthAttendance);
@@ -99,7 +99,7 @@ const EmployeeDetail = () => {
 
     const handleExportExcel = () => {
         if (!employee) return;
-        
+
         // Prepare Data for Export
         const profileData = [
             ["معلومات الموظف", ""],
@@ -114,7 +114,7 @@ const EmployeeDetail = () => {
         ];
 
         const headers = ["التاريخ", "وقت الدخول", "وقت الخروج", "عدد الساعات", "نسبة الإنجاز"];
-        
+
         const attendanceRows = attendance.map(rec => {
             return [
                 rec.date,
@@ -126,31 +126,32 @@ const EmployeeDetail = () => {
         });
 
         const worksheetData = [...profileData, headers, ...attendanceRows];
-        
+
         const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
         // RTL Support
         worksheet['!dir'] = 'rtl';
-        
+
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "تقرير الموظف");
-        
+
         // Write to blob and trigger download with explicit extension
         const wbOut = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
         const blob = new Blob([wbOut], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         const url = URL.createObjectURL(blob);
-        
+
         const safeName = (employee.name || 'Employee').replace(/[\\/:*?"<>|]/g, '-').trim();
         const a = document.createElement('a');
         a.style.display = 'none';
         a.href = url;
         a.download = `${safeName}_Attendance.xlsx`;
+        a.target = '_blank';
         document.body.appendChild(a);
         a.click();
-        
+
         setTimeout(() => {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-        }, 100);
+        }, 3000);
     };
 
     // ─── PDF Export ─────────────────────────────────────────────
@@ -165,6 +166,15 @@ const EmployeeDetail = () => {
                 .eq('id', id)
                 .single();
             if (empError) throw empError;
+
+            // Fetch the actual company name dynamically
+            const { data: companyData, error: companyError } = await supabase
+                .from('companies')
+                .select('name')
+                .eq('id', empData.company_id)
+                .single();
+                
+            if (companyError) console.warn("Could not fetch company name", companyError);
 
             const [year, month] = selectedMonth.split('-');
             const startDate = `${year}-${month}-01`;
@@ -191,7 +201,7 @@ const EmployeeDetail = () => {
             for (let i = 1; i <= lastDay; i++) {
                 const dateStr = `${year}-${month}-${String(i).padStart(2, '0')}`;
                 const existing = (attData || []).find(r => r.date === dateStr);
-                
+
                 if (existing && !existing.isAbsent && existing.percentage_of_achievement != null) {
                     totalAchievement += existing.percentage_of_achievement;
                     presentDaysCount++;
@@ -222,7 +232,7 @@ const EmployeeDetail = () => {
             const totalHours = totalHoursNum.toFixed(1);
             const currentMonthString = `${month}/${year}`;
             const calcAvg = presentDaysCount > 0 ? (totalAchievement / presentDaysCount).toFixed(1) : 0;
-            const companyName = "أُسس"; // Generic fallback as per requirements
+            const companyName = companyData?.name || "غير محدد";
 
             // ── Load assets ──
             const pdfBytes = await fetch('/osos_paper.pdf').then(res => res.arrayBuffer());
@@ -237,11 +247,11 @@ const EmployeeDetail = () => {
             const drawRTL = (page, text, x, y, size = 12) => {
                 if (!text) return;
                 const str = String(text);
-                
+
                 // Split by contiguous English/number strings (e.g. "John Doe", "08:30", "2026-05-12")
                 const regex = /([A-Za-z0-9.:%/-]+(?:\s+[A-Za-z0-9.:%/-]+)*)/g;
                 const segments = str.split(regex).filter(Boolean);
-                
+
                 // Calculate total width of all segments
                 let totalWidth = 0;
                 const segWidths = segments.map(seg => {
@@ -249,7 +259,7 @@ const EmployeeDetail = () => {
                     totalWidth += w;
                     return w;
                 });
-                
+
                 // Draw each segment from right to left (native RTL layout order)
                 let currentX = x;
                 segments.forEach((seg, index) => {
@@ -268,7 +278,7 @@ const EmployeeDetail = () => {
             const drawCenteredText = (page, text, rightBound, width, y, size) => {
                 const regex = /([A-Za-z0-9.:%/-]+(?:\s+[A-Za-z0-9.:%/-]+)*)/g;
                 const segments = String(text || '').split(regex).filter(Boolean);
-                
+
                 let totalW = 0;
                 const segWidths = segments.map(seg => {
                     const w = customFont.widthOfTextAtSize(seg, size);
@@ -292,13 +302,13 @@ const EmployeeDetail = () => {
             // ── PAGE 1: Single Page Summary ──
             const page = pdfDoc.getPages()[0];
             page.setSize(595, 842);
-            
+
             // Top Table dimensions
             const boxX = 50;
             const boxWidth = 495;
             const topBoxY = 545; // Top edge = 650
             const topBoxHeight = 105; // 3 rows of 35
-            
+
             // Draw Row Backgrounds
             page.drawRectangle({
                 x: boxX,
@@ -371,10 +381,10 @@ const EmployeeDetail = () => {
             }
 
             // Bottom Summary Table (6 Columns, 2 Rows)
-            const tableTopY = Math.min(450, skillY - 20); 
+            const tableTopY = Math.min(450, skillY - 20);
             const bottomBoxHeight = 70; // 2 rows of 35
             const bottomBoxY = tableTopY - bottomBoxHeight;
-            
+
             // Draw Header Background (Orange)
             page.drawRectangle({
                 x: boxX,
@@ -404,7 +414,7 @@ const EmployeeDetail = () => {
 
             // Custom Column Widths
             const colWidths = [135, 95, 75, 60, 60, 70]; // Sum = 495
-            
+
             const getColRightBound = (index) => {
                 let r = boxX + boxWidth;
                 for (let j = 0; j < index; j++) {
@@ -449,19 +459,20 @@ const EmployeeDetail = () => {
             const pdfOutput = await pdfDoc.save();
             const blob = new Blob([pdfOutput], { type: 'application/pdf' });
             const url = URL.createObjectURL(blob);
-            
+
             const safeName = (empData.name || 'Employee').replace(/[\\/:*?"<>|]/g, '-').trim();
             const a = document.createElement('a');
             a.style.display = 'none';
             a.href = url;
             a.download = `${safeName}_سجل_الموظف.pdf`;
+            a.target = '_blank';
             document.body.appendChild(a);
             a.click();
-            
+
             setTimeout(() => {
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
-            }, 100);
+            }, 3000);
 
             toast.success('تم تصدير ملف PDF بنجاح');
         } catch (error) {
@@ -494,7 +505,7 @@ const EmployeeDetail = () => {
         setSaving(true);
         try {
             const dateStr = editingRecord.date;
-            
+
             // Reconstruct ISO timestamps
             const checkInIso = editForm.check_in ? new Date(`${dateStr}T${editForm.check_in}:00`).toISOString() : null;
             const checkOutIso = editForm.check_out ? new Date(`${dateStr}T${editForm.check_out}:00`).toISOString() : null;
@@ -576,8 +587,8 @@ const EmployeeDetail = () => {
                     <h2 className="text-xl font-bold headline-font text-zinc-900">تفاصيل الموظف</h2>
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4 flex-wrap w-full md:w-auto">
-                    <input 
-                        type="month" 
+                    <input
+                        type="month"
                         value={selectedMonth}
                         onChange={(e) => setSelectedMonth(e.target.value)}
                         className="bg-surface-container border-none rounded-xl px-4 py-2.5 font-bold text-zinc-700 focus:ring-2 focus:ring-primary/20 w-full sm:w-auto"
@@ -603,7 +614,7 @@ const EmployeeDetail = () => {
                     <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-white text-3xl font-bold shadow-lg shrink-0">
                         {employee?.name?.charAt(0) || '?'}
                     </div>
-                    
+
                     <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
                         <div>
                             <p className="text-sm text-zinc-500 mb-1">الاسم</p>
@@ -679,7 +690,7 @@ const EmployeeDetail = () => {
                                             {rec.isAbsent ? '-' : (rec.percentage_of_achievement ? `${rec.percentage_of_achievement}%` : '-')}
                                         </td>
                                         <td className="px-6 py-4 text-center">
-                                            <button 
+                                            <button
                                                 onClick={() => openEditModal(rec)}
                                                 className="p-2 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg transition-colors inline-flex"
                                             >
@@ -707,34 +718,34 @@ const EmployeeDetail = () => {
                         <form onSubmit={handleEditSubmit} className="p-6 space-y-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-bold text-zinc-700">وقت الدخول</label>
-                                <input 
-                                    type="time" 
+                                <input
+                                    type="time"
                                     value={editForm.check_in}
-                                    onChange={(e) => setEditForm({...editForm, check_in: e.target.value})}
-                                    className="w-full bg-surface-container border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20" 
+                                    onChange={(e) => setEditForm({ ...editForm, check_in: e.target.value })}
+                                    className="w-full bg-surface-container border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20"
                                 />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-bold text-zinc-700">وقت الخروج</label>
-                                <input 
-                                    type="time" 
+                                <input
+                                    type="time"
                                     value={editForm.check_out}
-                                    onChange={(e) => setEditForm({...editForm, check_out: e.target.value})}
-                                    className="w-full bg-surface-container border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20" 
+                                    onChange={(e) => setEditForm({ ...editForm, check_out: e.target.value })}
+                                    className="w-full bg-surface-container border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20"
                                 />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-bold text-zinc-700">نسبة الإنجاز (%)</label>
-                                <input 
-                                    type="number" 
+                                <input
+                                    type="number"
                                     min="0" max="100" step="0.1"
                                     value={editForm.percentage}
-                                    onChange={(e) => setEditForm({...editForm, percentage: e.target.value})}
-                                    className="w-full bg-surface-container border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20" 
+                                    onChange={(e) => setEditForm({ ...editForm, percentage: e.target.value })}
+                                    className="w-full bg-surface-container border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20"
                                     placeholder="مثال: 85.5"
                                 />
                             </div>
-                            
+
                             <div className="mt-4 p-4 bg-primary/5 rounded-xl">
                                 <p className="text-sm text-primary font-bold flex justify-between">
                                     <span>عدد الساعات المحسوب:</span>

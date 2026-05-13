@@ -199,6 +199,8 @@ const AddEmployee = () => {
                         const password = row['Password'] || row['password'] || row['كلمة المرور'] || row['الرقم السري'] || row['الباسورد'];
 
                         if (!name || !username || !password || !phone || !job_title || !salary) {
+                            console.error('Row validation failed:', { name, username, password: !!password, phone, job_title, salary, raw: row });
+                            toast.error(`خطأ: بيانات غير مكتملة في الصف ${i + 2}`);
                             failedCount++;
                             setBulkProgress(prev => ({ ...prev, current: prev.current + 1, failed: failedCount }));
                             continue;
@@ -207,19 +209,22 @@ const AddEmployee = () => {
                         try {
                             const usernameAvailable = await isUsernameAvailable(username);
                             if (!usernameAvailable) {
+                                console.warn(`Username ${username} is not available`);
+                                toast.error(`اسم المستخدم "${username}" غير متاح`);
                                 failedCount++;
                                 setBulkProgress(prev => ({ ...prev, current: prev.current + 1, failed: failedCount }));
                                 continue;
                             }
 
                             const userEmail = email || `${username}@system.local`;
-                            const { success, userId } = await createEmployeeUser({
+                            const { success, userId, error: createAuthError } = await createEmployeeUser({
                                 username,
                                 password: String(password),
                                 email: userEmail
                             });
 
                             if (!success) {
+                                console.error(`Failed to create auth for ${username}:`, createAuthError);
                                 failedCount++;
                                 setBulkProgress(prev => ({ ...prev, current: prev.current + 1, failed: failedCount }));
                                 continue;
@@ -242,11 +247,15 @@ const AddEmployee = () => {
                                 .insert([employeeData]);
 
                             if (employeeError) {
+                                console.error(`Failed to insert employee data for ${username}:`, employeeError.message);
+                                toast.error(`خطأ في بيانات ${name}: ${employeeError.message}`);
                                 failedCount++;
                             } else {
                                 successCount++;
                             }
                         } catch (err) {
+                            console.error(`Unexpected bulk error for ${username}:`, err);
+                            toast.error(`خطأ غير متوقع لـ ${username}: ${err.message}`);
                             failedCount++;
                         }
 

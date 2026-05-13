@@ -12,7 +12,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storageKey: 'osos-app-auth-token-v5',
+    storageKey: 'osos-auth-v6',
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
