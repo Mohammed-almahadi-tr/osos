@@ -306,8 +306,8 @@ const EmployeeDetail = () => {
             // Top Table dimensions
             const boxX = 50;
             const boxWidth = 495;
-            const topBoxY = 545; // Top edge = 650
-            const topBoxHeight = 105; // 3 rows of 35
+            const topBoxY = 510; // Top edge = 650
+            const topBoxHeight = 140; // 4 rows of 35
 
             // Draw Row Backgrounds
             page.drawRectangle({
@@ -315,14 +315,21 @@ const EmployeeDetail = () => {
                 y: topBoxY,
                 width: boxWidth,
                 height: topBoxHeight,
-                color: rgb(0.95, 0.95, 0.95), // Gray base for Rows 1 and 3
+                color: rgb(0.95, 0.95, 0.95), // Gray base
             });
             page.drawRectangle({
                 x: boxX,
-                y: topBoxY + 35,
+                y: topBoxY + 70, // Row 2 (Job Title)
                 width: boxWidth,
                 height: 35,
-                color: rgb(1, 1, 1), // White for Row 2
+                color: rgb(1, 1, 1), // White
+            });
+            page.drawRectangle({
+                x: boxX,
+                y: topBoxY, // Row 4 (Salary)
+                width: boxWidth,
+                height: 35,
+                color: rgb(1, 1, 1), // White
             });
 
             // Draw Outer Box Border
@@ -335,7 +342,7 @@ const EmployeeDetail = () => {
                 borderWidth: 1.5,
             });
 
-            // Draw 2 horizontal inner lines
+            // Draw 3 horizontal inner lines
             page.drawLine({
                 start: { x: boxX, y: topBoxY + 35 },
                 end: { x: boxX + boxWidth, y: topBoxY + 35 },
@@ -348,22 +355,28 @@ const EmployeeDetail = () => {
                 thickness: 1,
                 color: rgb(0.2, 0.2, 0.2)
             });
+            page.drawLine({
+                start: { x: boxX, y: topBoxY + 105 },
+                end: { x: boxX + boxWidth, y: topBoxY + 105 },
+                thickness: 1,
+                color: rgb(0.2, 0.2, 0.2)
+            });
 
             // Draw Row Texts (Bi-Di Split)
             const labelX = boxX + boxWidth - 20; // right padding
             const valueX = 350; // value aligned far to the left of label
 
-            drawRTL(page, 'الشركة :', labelX, topBoxY + 70 + 12, 13);
-            drawRTL(page, companyName, valueX, topBoxY + 70 + 12, 13);
+            drawRTL(page, 'الشركة :', labelX, topBoxY + 105 + 12, 13);
+            drawRTL(page, companyName, valueX, topBoxY + 105 + 12, 13);
 
-            drawRTL(page, 'المسمى الوظيفي :', labelX, topBoxY + 35 + 12, 13);
-            drawRTL(page, empData.job_title || '', valueX, topBoxY + 35 + 12, 13);
+            drawRTL(page, 'المسمى الوظيفي :', labelX, topBoxY + 70 + 12, 13);
+            drawRTL(page, empData.job_title || '', valueX, topBoxY + 70 + 12, 13);
 
-            drawRTL(page, 'نسبة الانجاز :', labelX, topBoxY + 12, 13);
-            drawRTL(page, `${calcAvg}%`, valueX, topBoxY + 12, 13);
+            drawRTL(page, 'نسبة الانجاز :', labelX, topBoxY + 35 + 12, 13);
+            drawRTL(page, `${calcAvg}%`, valueX, topBoxY + 35 + 12, 13);
 
-            drawRTL(page, 'الراتب :', labelX, topBoxY + 35 + 12, 13);
-            drawRTL(page, empData.salary || '', valueX, topBoxY + 35 + 12, 13);
+            drawRTL(page, 'الراتب :', labelX, topBoxY + 12, 13);
+            drawRTL(page, empData.salary ? `${empData.salary} ريال` : '-', valueX, topBoxY + 12, 13);
 
             // Job Skills Section
             const skillsTitleY = topBoxY - 45; // Move title below top table
