@@ -184,6 +184,9 @@ const EmployeeDetail = () => {
             const fullMonth = [];
             let totalAchievement = 0;
             let presentDaysCount = 0;
+            let totalAttendance = 0;
+            let totalAbsence = 0;
+            let totalHoursNum = 0;
 
             for (let i = 1; i <= lastDay; i++) {
                 const dateStr = `${year}-${month}-${String(i).padStart(2, '0')}`;
@@ -194,15 +197,30 @@ const EmployeeDetail = () => {
                     presentDaysCount++;
                 }
 
-                fullMonth.push(existing || {
+                const rec = existing || {
                     isAbsent: true,
                     date: dateStr,
                     check_in: null,
                     check_out: null,
                     percentage_of_achievement: null,
-                });
+                };
+                fullMonth.push(rec);
+
+                if (rec.isAbsent) {
+                    totalAbsence++;
+                } else {
+                    const h = parseFloat(calculateHours(rec.check_in, rec.check_out));
+                    if (h > 0) {
+                        totalAttendance++;
+                        totalHoursNum += h;
+                    } else {
+                        totalAbsence++;
+                    }
+                }
             }
 
+            const totalHours = totalHoursNum.toFixed(1);
+            const currentMonthString = `${month}/${year}`;
             const calcAvg = presentDaysCount > 0 ? (totalAchievement / presentDaysCount).toFixed(1) : 0;
             const companyName = "أُسس"; // Generic fallback as per requirements
 
@@ -271,160 +289,161 @@ const EmployeeDetail = () => {
                 });
             };
 
-            // ── PAGE 1: Employee Profile Details (Formal Form Structure) ──
-            const page1 = pdfDoc.getPages()[0];
+            // ── PAGE 1: Single Page Summary ──
+            const page = pdfDoc.getPages()[0];
+            page.setSize(595, 842);
             
-            // ── PAGE 2: Copy the BLANK template page FIRST, before any drawing ──
-            const [pageTemplate] = await pdfDoc.copyPages(pdfDoc, [0]);
-            const page2 = pdfDoc.addPage(pageTemplate);
-            
-            // Outer Form Box dimensions (under the template header)
+            // Top Table dimensions
             const boxX = 50;
-            const boxY = 150;
             const boxWidth = 495;
-            const boxHeight = 530;
+            const topBoxY = 545; // Top edge = 650
+            const topBoxHeight = 105; // 3 rows of 35
             
-            // Draw Outer Box
-            page1.drawRectangle({
+            // Draw Row Backgrounds
+            page.drawRectangle({
                 x: boxX,
-                y: boxY,
+                y: topBoxY,
                 width: boxWidth,
-                height: boxHeight,
+                height: topBoxHeight,
+                color: rgb(0.95, 0.95, 0.95), // Gray base for Rows 1 and 3
+            });
+            page.drawRectangle({
+                x: boxX,
+                y: topBoxY + 35,
+                width: boxWidth,
+                height: 35,
+                color: rgb(1, 1, 1), // White for Row 2
+            });
+
+            // Draw Outer Box Border
+            page.drawRectangle({
+                x: boxX,
+                y: topBoxY,
+                width: boxWidth,
+                height: topBoxHeight,
                 borderColor: rgb(0.2, 0.2, 0.2),
                 borderWidth: 1.5,
             });
 
-            // 5 Rows for Employee Data (height 35 each)
-            const rowHeight = 35;
-            const startRowY = boxY + boxHeight - rowHeight; // 645
-
-            // Draw Horizontal lines for rows
-            for (let i = 1; i <= 5; i++) {
-                const lineY = startRowY - (i - 1) * rowHeight;
-                page1.drawLine({
-                    start: { x: boxX, y: lineY },
-                    end: { x: boxX + boxWidth, y: lineY },
-                    thickness: 1,
-                    color: rgb(0.2, 0.2, 0.2)
-                });
-            }
-
-            // Draw Vertical Divider between label and value columns
-            const labelColWidth = 140;
-            const dividerX = boxX + boxWidth - labelColWidth; // 405
-            page1.drawLine({
-                start: { x: dividerX, y: startRowY - (4 * rowHeight) }, // Down through Row 5
-                end: { x: dividerX, y: boxY + boxHeight },
+            // Draw 2 horizontal inner lines
+            page.drawLine({
+                start: { x: boxX, y: topBoxY + 35 },
+                end: { x: boxX + boxWidth, y: topBoxY + 35 },
+                thickness: 1,
+                color: rgb(0.2, 0.2, 0.2)
+            });
+            page.drawLine({
+                start: { x: boxX, y: topBoxY + 70 },
+                end: { x: boxX + boxWidth, y: topBoxY + 70 },
                 thickness: 1,
                 color: rgb(0.2, 0.2, 0.2)
             });
 
-            // Draw Row Labels (Right side)
-            const labelX = boxX + boxWidth - 15; // Padding from right edge
-            drawRTL(page1, "الشركة", labelX, startRowY + 10, 13);
-            drawRTL(page1, "اسم الموظف", labelX, startRowY - rowHeight + 10, 13);
-            drawRTL(page1, "المهمة", labelX, startRowY - (2 * rowHeight) + 10, 13);
-            drawRTL(page1, "الراتب", labelX, startRowY - (3 * rowHeight) + 10, 13);
-            drawRTL(page1, "نسبة الانجاز", labelX, startRowY - (4 * rowHeight) + 10, 13);
+            // Draw Row Texts (Bi-Di Split)
+            const labelX = boxX + boxWidth - 20; // right padding
+            const valueX = 350; // value aligned far to the left of label
 
-            // Draw Row Values (Left side)
-            const valueX = dividerX - 15; // Padding from divider
-            drawRTL(page1, companyName, valueX, startRowY + 10, 13);
-            drawRTL(page1, empData.name || '', valueX, startRowY - rowHeight + 10, 13);
-            drawRTL(page1, empData.job_title || '', valueX, startRowY - (2 * rowHeight) + 10, 13);
-            drawRTL(page1, `${empData.salary || 0} ريال`, valueX, startRowY - (3 * rowHeight) + 10, 13);
-            drawRTL(page1, `${calcAvg}%`, valueX, startRowY - (4 * rowHeight) + 10, 13);
+            drawRTL(page, 'الشركة :', labelX, topBoxY + 70 + 12, 13);
+            drawRTL(page, companyName, valueX, topBoxY + 70 + 12, 13);
 
-            // "مهام الوظيفة" (Job Tasks) Section
-            const tasksSectionY = startRowY - (5 * rowHeight); // 470
-            
-            // Section Title inside the box
-            drawRTL(page1, "مهام الوظيفة", labelX, tasksSectionY - 25, 14);
+            drawRTL(page, 'المسمى الوظيفي :', labelX, topBoxY + 35 + 12, 13);
+            drawRTL(page, empData.job_title || '', valueX, topBoxY + 35 + 12, 13);
 
-            // Draw separator line under title inside the box
-            page1.drawLine({
-                start: { x: boxX, y: tasksSectionY - 35 },
-                end: { x: boxX + boxWidth, y: tasksSectionY - 35 },
-                thickness: 1,
-                color: rgb(0.2, 0.2, 0.2)
-            });
+            drawRTL(page, 'نسبة الانجاز :', labelX, topBoxY + 12, 13);
+            drawRTL(page, `${calcAvg}%`, valueX, topBoxY + 12, 13);
 
-            // Draw Skills bullet points
+            // Job Skills Section
+            const skillsTitleY = topBoxY - 45; // Move title below top table
+            drawRTL(page, "مهام الوظيفة", labelX, skillsTitleY, 16);
+
             const skillsStr = empData.job_skills || '';
             const skills = skillsStr ? skillsStr.split(/[\n,]+/).map(s => s.trim()).filter(Boolean) : [];
-            let skillY = tasksSectionY - 60;
+            let skillY = skillsTitleY - 30;
 
             if (skills.length > 0) {
                 skills.forEach((skill) => {
-                    if (skillY > boxY + 20) { // Stay within box boundary
-                        drawRTL(page1, `•  ${skill}`, labelX - 10, skillY, 12);
-                        skillY -= 22;
-                    }
+                    // Safe X-coordinate so they don't get cut off on the right edge
+                    drawRTL(page, `•  ${skill}`, labelX - 20, skillY, 13);
+                    skillY -= 22;
                 });
             } else {
-                drawRTL(page1, "-", labelX - 10, skillY, 12);
+                drawRTL(page, "-", labelX - 20, skillY, 13);
             }
 
-            // ── PAGE 2: Bordered Attendance Table ──
+            // Bottom Summary Table (6 Columns, 2 Rows)
+            const tableTopY = Math.min(450, skillY - 20); 
+            const bottomBoxHeight = 70; // 2 rows of 35
+            const bottomBoxY = tableTopY - bottomBoxHeight;
+            
+            // Draw Header Background (Orange)
+            page.drawRectangle({
+                x: boxX,
+                y: bottomBoxY + 35,
+                width: boxWidth,
+                height: 35,
+                color: rgb(0.98, 0.78, 0.36), // #FBC05D
+            });
 
-            // Table Title
-            drawRTL(page2, "سجل الحضور والانصراف", 350, 610, 16);
+            // Draw Table Rectangle
+            page.drawRectangle({
+                x: boxX,
+                y: bottomBoxY,
+                width: boxWidth,
+                height: bottomBoxHeight,
+                borderColor: rgb(0.2, 0.2, 0.2),
+                borderWidth: 1.5,
+            });
 
-            const startX = 50;
-            let tableY = 580;
-            const tableRowHeight = 14; 
-            const colWidths = [70, 100, 100, 100, 100]; 
-            const tableWidth = colWidths.reduce((a, b) => a + b, 0); // 470
+            // Horizontal line separating header from data
+            page.drawLine({
+                start: { x: boxX, y: bottomBoxY + 35 },
+                end: { x: boxX + boxWidth, y: bottomBoxY + 35 },
+                thickness: 1,
+                color: rgb(0.2, 0.2, 0.2)
+            });
 
-            const headers = ["اليوم", "وقت الدخول", "وقت الخروج", "عدد الساعات", "نسبة الانجاز"];
-
+            // Custom Column Widths
+            const colWidths = [135, 95, 75, 60, 60, 70]; // Sum = 495
+            
             const getColRightBound = (index) => {
-                let r = startX + tableWidth;
+                let r = boxX + boxWidth;
                 for (let j = 0; j < index; j++) {
                     r -= colWidths[j];
                 }
                 return r;
             };
 
-            // Draw Headers
-            headers.forEach((text, i) => {
-                const rBound = getColRightBound(i);
-                drawCenteredText(page2, text, rBound, colWidths[i], tableY - 11, 10);
-            });
-
-            // Header lines
-            page2.drawLine({ start: { x: startX, y: tableY }, end: { x: startX + tableWidth, y: tableY }, thickness: 1, color: rgb(0.2, 0.2, 0.2) });
-            page2.drawLine({ start: { x: startX, y: tableY - tableRowHeight }, end: { x: startX + tableWidth, y: tableY - tableRowHeight }, thickness: 1, color: rgb(0.2, 0.2, 0.2) });
-
-            let loopY = tableY - tableRowHeight;
-
-            fullMonth.forEach((rec) => {
-                const dateText = rec.date;
-                const checkIn = rec.isAbsent ? '00:00' : formatTime(rec.check_in);
-                const checkOut = rec.isAbsent ? '00:00' : formatTime(rec.check_out);
-                const hours = rec.isAbsent ? '0.0' : calculateHours(rec.check_in, rec.check_out);
-                const achievement = rec.isAbsent ? '-' : (rec.percentage_of_achievement ? `${rec.percentage_of_achievement}%` : '-');
-
-                const rowData = [dateText, checkIn, checkOut, hours, achievement];
-
-                rowData.forEach((text, i) => {
-                    const rBound = getColRightBound(i);
-                    drawCenteredText(page2, text, rBound, colWidths[i], loopY - 11, 8);
+            // 5 vertical lines for 6 columns
+            for (let i = 0; i < 5; i++) {
+                const vx = getColRightBound(i) - colWidths[i];
+                page.drawLine({
+                    start: { x: vx, y: bottomBoxY },
+                    end: { x: vx, y: bottomBoxY + bottomBoxHeight },
+                    thickness: 1,
+                    color: rgb(0.2, 0.2, 0.2)
                 });
+            }
 
-                // Row bottom line
-                page2.drawLine({ start: { x: startX, y: loopY - tableRowHeight }, end: { x: startX + tableWidth, y: loopY - tableRowHeight }, thickness: 1, color: rgb(0.2, 0.2, 0.2) });
-                
-                loopY -= tableRowHeight;
+            // Header and Data texts
+            const bottomHeaders = ["اسم الموظف", "رقم الهوية", "الشهر الحالي", "أيام الحضور", "أيام الغياب", "إجمالي الساعات"];
+            const bottomData = [
+                empData.name || '',
+                empData.national_id || '',
+                currentMonthString,
+                String(totalAttendance),
+                String(totalAbsence),
+                String(totalHours)
+            ];
+
+            bottomHeaders.forEach((text, i) => {
+                const rBound = getColRightBound(i);
+                drawCenteredText(page, text, rBound, colWidths[i], bottomBoxY + 35 + 12, 11);
             });
 
-            // Draw Vertical Lines
-            let vx = startX + tableWidth;
-            page2.drawLine({ start: { x: vx, y: tableY }, end: { x: vx, y: loopY }, thickness: 1, color: rgb(0.2, 0.2, 0.2) });
-            for (let i = 0; i < colWidths.length; i++) {
-                vx -= colWidths[i];
-                page2.drawLine({ start: { x: vx, y: tableY }, end: { x: vx, y: loopY }, thickness: 1, color: rgb(0.2, 0.2, 0.2) });
-            }
+            bottomData.forEach((text, i) => {
+                const rBound = getColRightBound(i);
+                drawCenteredText(page, text, rBound, colWidths[i], bottomBoxY + 12, 11);
+            });
 
             // ── Trigger download ──
             const pdfOutput = await pdfDoc.save();
@@ -547,30 +566,30 @@ const EmployeeDetail = () => {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 overflow-x-hidden">
             {/* Header Actions */}
-            <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl shadow-sm gap-4">
                 <div className="flex items-center gap-4">
                     <button onClick={() => navigate(-1)} className="p-2 bg-surface-container hover:bg-zinc-200 rounded-xl transition-colors">
                         <span className="material-symbols-outlined text-zinc-700">arrow_forward</span>
                     </button>
                     <h2 className="text-xl font-bold headline-font text-zinc-900">تفاصيل الموظف</h2>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4 flex-wrap w-full md:w-auto">
                     <input 
                         type="month" 
                         value={selectedMonth}
                         onChange={(e) => setSelectedMonth(e.target.value)}
-                        className="bg-surface-container border-none rounded-xl px-4 py-2.5 font-bold text-zinc-700 focus:ring-2 focus:ring-primary/20"
+                        className="bg-surface-container border-none rounded-xl px-4 py-2.5 font-bold text-zinc-700 focus:ring-2 focus:ring-primary/20 w-full sm:w-auto"
                     />
-                    <button onClick={handleExportExcel} className="bg-primary hover:opacity-90 text-white font-bold px-4 py-2.5 rounded-xl transition-opacity flex items-center gap-2 shadow-lg shadow-primary/20">
+                    <button onClick={handleExportExcel} className="bg-primary hover:opacity-90 text-white font-bold px-4 py-2.5 rounded-xl transition-opacity flex items-center justify-center gap-2 shadow-lg shadow-primary/20 w-full sm:w-auto">
                         <span className="material-symbols-outlined text-sm">download</span>
                         تصدير Excel
                     </button>
                     <button
                         onClick={exportToPDF}
                         disabled={pdfExporting}
-                        className="bg-red-600 hover:opacity-90 text-white font-bold px-4 py-2.5 rounded-xl transition-opacity flex items-center gap-2 shadow-lg shadow-red-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="bg-red-600 hover:opacity-90 text-white font-bold px-4 py-2.5 rounded-xl transition-opacity flex items-center justify-center gap-2 shadow-lg shadow-red-600/20 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
                     >
                         <span className="material-symbols-outlined text-sm">{pdfExporting ? 'hourglass_empty' : 'picture_as_pdf'}</span>
                         {pdfExporting ? 'جاري التصدير...' : 'تصدير PDF'}
@@ -581,38 +600,38 @@ const EmployeeDetail = () => {
             {/* Profile Card */}
             <div className="bg-white rounded-2xl shadow-sm border border-zinc-100 p-8">
                 <div className="flex flex-col md:flex-row gap-8 items-start">
-                    <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-white text-3xl font-bold shadow-lg">
-                        {employee.name.charAt(0)}
+                    <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-white text-3xl font-bold shadow-lg shrink-0">
+                        {employee?.name?.charAt(0) || '?'}
                     </div>
                     
-                    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
                         <div>
                             <p className="text-sm text-zinc-500 mb-1">الاسم</p>
-                            <p className="font-bold text-zinc-900 text-lg">{employee.name}</p>
+                            <p className="font-bold text-zinc-900 text-lg">{employee?.name || '-'}</p>
                         </div>
                         <div>
                             <p className="text-sm text-zinc-500 mb-1">المسمى الوظيفي</p>
-                            <p className="font-bold text-zinc-900 text-lg">{employee.job_title}</p>
+                            <p className="font-bold text-zinc-900 text-lg">{employee?.job_title || '-'}</p>
                         </div>
                         <div>
                             <p className="text-sm text-zinc-500 mb-1">الهوية الوطنية</p>
-                            <p className="font-bold text-zinc-900 text-lg">{employee.national_id || '-'}</p>
+                            <p className="font-bold text-zinc-900 text-lg">{employee?.national_id || '-'}</p>
                         </div>
                         <div>
                             <p className="text-sm text-zinc-500 mb-1">رقم الجوال</p>
-                            <p className="font-bold text-zinc-900 text-lg" dir="ltr">{employee.phone || '-'}</p>
+                            <p className="font-bold text-zinc-900 text-lg" dir="ltr">{employee?.phone || '-'}</p>
                         </div>
                         <div>
                             <p className="text-sm text-zinc-500 mb-1">المرتب</p>
-                            <p className="font-bold text-zinc-900 text-lg">{employee.salary ? `${employee.salary} ريال` : '-'}</p>
+                            <p className="font-bold text-zinc-900 text-lg">{employee?.salary ? `${employee.salary} ريال` : '-'}</p>
                         </div>
                         <div>
                             <p className="text-sm text-zinc-500 mb-1">متوسط الإنجاز</p>
-                            <p className="font-bold text-green-600 text-lg">{averageAchievement.toFixed(1)}%</p>
+                            <p className="font-bold text-green-600 text-lg">{(averageAchievement || 0).toFixed(1)}%</p>
                         </div>
                         <div className="md:col-span-2 lg:col-span-3">
                             <p className="text-sm text-zinc-500 mb-2">المهارات الوظيفية</p>
-                            {employee.job_skills ? (
+                            {employee?.job_skills ? (
                                 <ul className="list-disc list-inside space-y-1 text-zinc-700 font-medium">
                                     {employee.job_skills.split(',').map((skill, idx) => (
                                         <li key={idx}>{skill.trim()}</li>
