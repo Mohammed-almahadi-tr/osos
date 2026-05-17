@@ -3,6 +3,9 @@ import { supabase } from '../../services/supabase';
 import { useCompany } from '../../context/CompanyContext';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
+import { PDFDocument, rgb } from 'pdf-lib';
+import fontkit from '@pdf-lib/fontkit';
 
 const MonthlyReports = () => {
     const { selectedCompanyId } = useCompany();
@@ -12,9 +15,10 @@ const MonthlyReports = () => {
         const today = new Date();
         return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
     });
-    
+
     const [reportData, setReportData] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [pdfExporting, setPdfExporting] = useState(false);
 
     useEffect(() => {
         if (selectedCompanyId) {
@@ -30,7 +34,7 @@ const MonthlyReports = () => {
                 .from('employees')
                 .select('id, name, job_title, national_id, salary')
                 .eq('company_id', selectedCompanyId);
-            
+
             if (empError) throw empError;
 
             const empIds = employeesData.map(e => e.id);
@@ -105,37 +109,247 @@ const MonthlyReports = () => {
         return days;
     }
 
-    const handleExportCSV = () => {
+    const handleExportExcel = () => {
         if (reportData.length === 0) {
             toast.error("لا توجد بيانات للتصدير");
             return;
         }
 
         const headers = ["الموظف", "القسم/دور", "أيام الحضور", "أيام الغياب", "إجمالي الساعات", "نسبة الالتزام"];
-        const BOM = "\uFEFF"; 
-        let csvContent = BOM + headers.join(",") + "\n";
 
-        reportData.forEach(row => {
-            const rowData = [
-                `"${row.name}"`,
-                `"${row.job_title || ''}"`,
-                `"${row.daysPresent} يوم"`,
-                `"${row.daysAbsent} يوم"`,
-                `"${row.totalHours} ساعة"`,
-                `"${row.completionRate}%"`
-            ];
-            
-            csvContent += rowData.join(",") + "\n";
-        });
+        const rowsData = reportData.map(row => [
+            row.name,
+            row.job_title || '',
+            `${row.daysPresent} يوم`,
+            `${row.daysAbsent} يوم`,
+            `${row.totalHours} ساعة`,
+            `${row.completionRate}%`
+        ]);
 
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
+        const worksheetData = [headers, ...rowsData];
+        const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+        worksheet['!dir'] = 'rtl';
+
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "التقرير الشهري");
+
+        const wbOut = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([wbOut], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        link.setAttribute("download", `monthly_report_${month}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `تقرير_شهري_${month}.xlsx`;
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 3000);
+    };
+
+    const exportAggregatePDF = async () => {
+        if (reportData.length === 0) {
+            toast.error("لا توجد بيانات للتصدير");
+            return;
+        }
+        setPdfExporting(true);
+        try {
+            const { data: companyData } = await supabase
+                .from('companies')
+                .select('name')
+                .eq('id', selectedCompanyId)
+                .single();
+
+            const companyName = companyData?.name || "غير محدد";
+
+            const pdfBytes = await fetch('/osos_paper.pdf').then(res => res.arrayBuffer());
+            const fontBytes = await fetch('/fonts/Cairo-VariableFont_slnt,wght.ttf').then(res => res.arrayBuffer());
+
+            const pdfDoc = await PDFDocument.load(pdfBytes);
+            pdfDoc.registerFontkit(fontkit);
+            const customFont = await pdfDoc.embedFont(fontBytes);
+
+            const drawRTL = (page, text, x, y, size = 12) => {
+                if (!text) return;
+                const str = String(text);
+                const regex = /([A-Za-z0-9.:%/-]+(?:\s+[A-Za-z0-9.:%/-]+)*)/g;
+                const segments = str.split(regex).filter(Boolean);
+                let totalWidth = 0;
+                const segWidths = segments.map(seg => {
+                    const w = customFont.widthOfTextAtSize(seg, size);
+                    totalWidth += w;
+                    return w;
+                });
+                let currentX = x;
+                segments.forEach((seg, index) => {
+                    const w = segWidths[index];
+                    page.drawText(seg, { x: currentX - w, y, size, font: customFont });
+                    currentX -= w;
+                });
+            };
+
+            const drawCenteredText = (page, text, rightBound, width, y, size) => {
+                const fullText = String(text || '');
+                if (!fullText) return;
+                const textWidth = customFont.widthOfTextAtSize(fullText, size);
+
+                const drawLine = (lineText, lineY) => {
+                    const regex = /([A-Za-z0-9.:%/-]+(?:\s+[A-Za-z0-9.:%/-]+)*)/g;
+                    const segments = lineText.split(regex).filter(Boolean);
+                    let totalW = 0;
+                    const segWidths = segments.map(seg => {
+                        const w = customFont.widthOfTextAtSize(seg, size);
+                        totalW += w;
+                        return w;
+                    });
+                    let currentX = rightBound - (width / 2) + (totalW / 2);
+                    segments.forEach((seg, index) => {
+                        const w = segWidths[index];
+                        page.drawText(seg, { x: currentX - w, y: lineY, size, font: customFont });
+                        currentX -= w;
+                    });
+                };
+
+                if (textWidth > width - 10) {
+                    const words = fullText.split(' ');
+                    const half = Math.ceil(words.length / 2);
+                    const line1 = words.slice(0, half).join(' ');
+                    const line2 = words.slice(half).join(' ');
+                    drawLine(line1, y + 6);
+                    drawLine(line2, y - 6);
+                } else {
+                    drawLine(fullText, y);
+                }
+            };
+
+            const colWidths = [30, 110, 70, 70, 40, 40, 40, 50, 50];
+            const headers = ["م", "الاسم", "الهوية", "المهنة", "الحالة", "حضور", "غياب", "اجمالي الساعات", "الراتب"];
+            const boxX = 47.5;
+            const rowHeight = 35;
+
+            const getColRightBound = (index) => {
+                let r = boxX + 500;
+                for (let j = 0; j < index; j++) {
+                    r -= colWidths[j];
+                }
+                return r;
+            };
+
+            let page = pdfDoc.getPages()[0];
+            const [yearStr, mnthStr] = month.split('-');
+
+            // Only draw document info on first page
+            drawCenteredText(page, "سجل الحضور والانصراف الشهري", 595, 595, 720, 18);
+
+            let docInfoY = 680;
+            const labelX = 550;
+            const valueX = 490;
+
+            drawRTL(page, 'الشركة :', labelX, docInfoY, 14);
+            drawRTL(page, companyName, valueX, docInfoY, 14);
+
+            docInfoY -= 25;
+            drawRTL(page, 'الشهر :', labelX, docInfoY, 14);
+            drawRTL(page, mnthStr, valueX, docInfoY, 14);
+
+            docInfoY -= 25;
+            drawRTL(page, 'العام :', labelX, docInfoY, 14);
+            drawRTL(page, yearStr, valueX, docInfoY, 14);
+
+            const drawTableHeaders = (p, startY) => {
+                p.drawRectangle({
+                    x: boxX,
+                    y: startY,
+                    width: 500,
+                    height: rowHeight,
+                    color: rgb(0.98, 0.78, 0.36),
+                    borderColor: rgb(0, 0, 0),
+                    borderWidth: 1,
+                });
+
+                headers.forEach((text, i) => {
+                    const rBound = getColRightBound(i);
+                    drawCenteredText(p, text, rBound, colWidths[i], startY + 12, 10);
+                    if (i > 0) {
+                        p.drawLine({
+                            start: { x: rBound, y: startY },
+                            end: { x: rBound, y: startY + rowHeight },
+                            thickness: 1,
+                            color: rgb(0, 0, 0)
+                        });
+                    }
+                });
+            };
+
+            let currentY = 560;
+            drawTableHeaders(page, currentY);
+            currentY -= rowHeight;
+
+            for (let idx = 0; idx < reportData.length; idx++) {
+                if (currentY < 50) {
+                    page = pdfDoc.addPage([595, 842]);
+                    currentY = 780;
+                    drawTableHeaders(page, currentY);
+                    currentY -= rowHeight;
+                }
+
+                const row = reportData[idx];
+
+                const rowData = [
+                    String(idx + 1),
+                    row.name || "-",
+                    row.national_id || "-",
+                    row.job_title || "-",
+                    "نشط",
+                    String(row.daysPresent),
+                    String(row.daysAbsent),
+                    String(row.totalHours),
+                    row.salary ? String(row.salary) : "-"
+                ];
+
+                page.drawRectangle({
+                    x: boxX,
+                    y: currentY,
+                    width: 500,
+                    height: rowHeight,
+                    borderColor: rgb(0, 0, 0),
+                    borderWidth: 1,
+                });
+
+                rowData.forEach((text, i) => {
+                    const rBound = getColRightBound(i);
+                    drawCenteredText(page, text, rBound, colWidths[i], currentY + 12, 10);
+                    if (i > 0) {
+                        page.drawLine({
+                            start: { x: rBound, y: currentY },
+                            end: { x: rBound, y: currentY + rowHeight },
+                            thickness: 1,
+                            color: rgb(0, 0, 0)
+                        });
+                    }
+                });
+
+                currentY -= rowHeight;
+            }
+
+            const pdfOutput = await pdfDoc.save();
+            const blob = new Blob([pdfOutput], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `التقرير_الشهري_${month}.pdf`;
+            a.target = '_blank';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 3000);
+
+            toast.success("تم تصدير PDF بنجاح");
+        } catch (error) {
+            console.error("Error exporting PDF:", error);
+            toast.error("حدث خطأ أثناء تصدير PDF");
+        } finally {
+            setPdfExporting(false);
+        }
     };
 
     return (
@@ -147,16 +361,24 @@ const MonthlyReports = () => {
                 </div>
                 <div className="flex flex-col sm:flex-row gap-4 items-center w-full md:w-auto">
                     <div className="relative w-full sm:w-auto">
-                        <input 
-                            type="month" 
+                        <input
+                            type="month"
                             value={month}
                             onChange={(e) => setMonth(e.target.value)}
-                            className="bg-surface-container-low border-none rounded-xl py-2.5 px-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 cursor-pointer w-full sm:w-48" 
+                            className="bg-surface-container-low border-none rounded-xl py-2.5 px-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 cursor-pointer w-full sm:w-48"
                         />
                     </div>
-                    <button onClick={handleExportCSV} className="bg-surface-container hover:bg-zinc-200 text-zinc-700 font-bold px-4 py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2 w-full sm:w-auto">
+                    <button onClick={handleExportExcel} className="bg-primary hover:opacity-90 text-white font-bold px-4 py-2.5 rounded-xl transition-opacity flex items-center justify-center gap-2 shadow-lg shadow-primary/20 w-full sm:w-auto">
                         <span className="material-symbols-outlined text-sm">download</span>
-                        تصدير
+                        تصدير Excel
+                    </button>
+                    <button
+                        onClick={exportAggregatePDF}
+                        disabled={pdfExporting}
+                        className="bg-red-600 hover:opacity-90 text-white font-bold px-4 py-2.5 rounded-xl transition-opacity flex items-center justify-center gap-2 shadow-lg shadow-red-600/20 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
+                    >
+                        <span className="material-symbols-outlined text-sm">{pdfExporting ? 'hourglass_empty' : 'picture_as_pdf'}</span>
+                        {pdfExporting ? 'جاري التصدير...' : 'تصدير PDF'}
                     </button>
                 </div>
             </div>

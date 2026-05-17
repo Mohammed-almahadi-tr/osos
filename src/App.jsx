@@ -14,6 +14,7 @@ import DailyAttendance from './pages/admin/DailyAttendance';
 import MonthlyReports from './pages/admin/MonthlyReports';
 import EmployeesList from './pages/admin/EmployeesList';
 import AddEmployee from './pages/admin/AddEmployee';
+import EditEmployee from './pages/admin/EditEmployee';
 import AddCompany from './pages/admin/AddCompany';
 import CompaniesList from './pages/admin/CompaniesList';
 import CompanyCourses from './pages/admin/CompanyCourses';
@@ -81,6 +82,7 @@ function App() {
           <Route path="reports" element={<MonthlyReports />} />
           <Route path="employees" element={<EmployeesList />} />
           <Route path="add-employee" element={<AddEmployee />} />
+          <Route path="edit-employee/:id" element={<EditEmployee />} />
           <Route path="companies" element={<CompaniesList />} />
           <Route path="add-company" element={<AddCompany />} />
           <Route path="company-courses" element={<CompanyCourses />} />

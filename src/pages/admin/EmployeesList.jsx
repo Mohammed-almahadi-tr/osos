@@ -9,6 +9,7 @@ const EmployeesList = () => {
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
+    const [employeeToDelete, setEmployeeToDelete] = useState(null);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -36,18 +37,28 @@ const EmployeesList = () => {
         }
     };
 
-    const handleDelete = async (id) => {
-        if (!window.confirm("هل أنت متأكد من حذف هذا الموظف؟")) return;
+    const handleDelete = async () => {
+        if (!employeeToDelete) return;
 
         try {
+            // Delete attendance records first to handle foreign key constraint
+            const { error: attendanceError } = await supabase
+                .from('attendance')
+                .delete()
+                .eq('employee_id', employeeToDelete.id);
+
+            if (attendanceError) throw attendanceError;
+
+            // Delete the employee
             const { error } = await supabase
                 .from('employees')
                 .delete()
-                .eq('id', id);
+                .eq('id', employeeToDelete.id);
 
             if (error) throw error;
             
             toast.success("تم حذف الموظف بنجاح");
+            setEmployeeToDelete(null);
             fetchEmployees();
         } catch (error) {
             console.error("Error deleting employee:", error);
@@ -125,10 +136,10 @@ const EmployeesList = () => {
                                         <td className="px-6 py-4 font-bold text-zinc-900">{emp.salary} ر.س</td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-2">
-                                                <button className="p-2 text-zinc-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors">
+                                                <button type="button" onClick={() => navigate('/admin/edit-employee/' + emp.id)} className="p-2 text-zinc-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors">
                                                     <span className="material-symbols-outlined text-sm">edit</span>
                                                 </button>
-                                                <button onClick={() => handleDelete(emp.id)} className="p-2 text-zinc-400 hover:text-error hover:bg-error/10 rounded-lg transition-colors">
+                                                <button type="button" onClick={() => setEmployeeToDelete(emp)} className="p-2 text-zinc-400 hover:text-error hover:bg-error/10 rounded-lg transition-colors">
                                                     <span className="material-symbols-outlined text-sm">delete</span>
                                                 </button>
                                             </div>
@@ -140,6 +151,39 @@ const EmployeesList = () => {
                     </table>
                 </div>
             </div>
+
+            {employeeToDelete && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setEmployeeToDelete(null)}></div>
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 relative z-10 animate-in fade-in zoom-in duration-200">
+                        <div className="flex items-center gap-4 mb-4 text-red-600">
+                            <span className="material-symbols-outlined text-3xl">warning</span>
+                            <h3 className="text-xl font-bold">تأكيد الحذف</h3>
+                        </div>
+                        <p className="text-zinc-600 mb-6 leading-relaxed">
+                            هل أنت متأكد من حذف الموظف <span className="font-bold text-zinc-900">[{employeeToDelete.name}]</span>؟ 
+                            سيتم حذف جميع سجلات الحضور الخاصة به.
+                        </p>
+                        <div className="flex gap-3 justify-end">
+                            <button 
+                                type="button"
+                                onClick={() => setEmployeeToDelete(null)} 
+                                className="px-5 py-2.5 rounded-xl font-bold text-zinc-600 bg-zinc-100 hover:bg-zinc-200 transition-colors"
+                            >
+                                إلغاء
+                            </button>
+                            <button 
+                                type="button"
+                                onClick={handleDelete} 
+                                className="px-5 py-2.5 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 shadow-lg shadow-red-600/20 transition-colors flex items-center gap-2"
+                            >
+                                <span className="material-symbols-outlined text-sm">delete</span>
+                                حذف
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
