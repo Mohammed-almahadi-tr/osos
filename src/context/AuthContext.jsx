@@ -44,9 +44,17 @@ const withTimeout = (promise, ms) => {
  */
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [profile, setProfile] = useState(null);
+    const [profile, setProfileState] = useState(null);
     const [loading, setLoading] = useState(false);
     
+    // We use a ref to track profile state synchronously inside the onAuthStateChange listener
+    const profileRef = useRef(null);
+
+    const setProfile = (newProfile) => {
+        profileRef.current = newProfile;
+        setProfileState(newProfile);
+    };
+
     // Track in-progress fetches to prevent duplicate/concurrent runs that cause Supabase lock theft
     const fetchInProgress = useRef(false);
 
@@ -58,7 +66,7 @@ export const AuthProvider = ({ children }) => {
      * @param {number} [retries=3] - The number of allowed attempts before failing.
      * @returns {Promise<void>} Resolves when the profile fetch is completely resolved or fails securely.
      */
-    const fetchProfile = async (userId, retries = 3) => {
+    const fetchProfile = async (userId, retries = 3, isSilentRetry = false) => {
         // Prevent concurrent execution of fetchProfile which causes lock races
         if (fetchInProgress.current) {
             console.log('⏳ fetchProfile already in progress, skipping concurrent call.');
@@ -93,23 +101,27 @@ export const AuthProvider = ({ children }) => {
                                 await new Promise(r => setTimeout(r, 1200));
                                 continue;
                             }
-                            // If all retries fail, do not toast the messy lock error
-                            toast.error('تعذر مزامنة الجلسة مع الخادم بسبب تزاحم الطلبات.');
-                            setProfile(null);
-                            setUser(null);
-                            return; // Exit loop and function
+                            // If all retries fail, do not force logout. Soft fail and retry silently.
+                            if (!isSilentRetry) toast('الاتصال بطيء، جاري تحميل بيانات الحساب...', { icon: '⚠️', id: 'slow-conn' });
+                            setTimeout(() => { fetchProfile(userId, 1, true); }, 5000);
+                            return; // Exit loop and function without clearing user state
                         }
 
                         if (error.code === 'PGRST116') {
                             toast.error('لم يتم العثور على ملف تعريف لهذا المستخدم.');
+                            setProfile(null);
+                            setUser(null);
+                            return;
                         } else {
-                            toast.error(`خطأ في جلب بيانات المستخدم: ${error.message}`);
+                            if (attempt < retries) {
+                                await new Promise(r => setTimeout(r, 1200));
+                                continue;
+                            }
+                            // Soft fail for other errors
+                            if (!isSilentRetry) toast('الاتصال بطيء، جاري تحميل بيانات الحساب...', { icon: '⚠️', id: 'slow-conn' });
+                            setTimeout(() => { fetchProfile(userId, 1, true); }, 5000);
+                            return; // Do not clear user state
                         }
-
-                        // Gracefully fallback on database error
-                        setProfile(null);
-                        setUser(null);
-                        return; // Exit loop and function
                     }
 
                     if (!data.role || (data.role !== 'admin' && data.role !== 'employee')) {
@@ -123,6 +135,7 @@ export const AuthProvider = ({ children }) => {
                     }
 
                     // Profile fetch successful
+                    if (isSilentRetry) toast.success('تم استعادة الاتصال وتحميل البيانات');
                     console.log('✅ Profile loaded:', { username: data.username, role: data.role });
                     setProfile(data);
                     return; // Success — exit the loop and function
@@ -136,18 +149,23 @@ export const AuthProvider = ({ children }) => {
                             continue; // Try again, loop continues
                         }
 
-                        // All retries exhausted, gracefully fallback using console.warn instead of unhandled error
-                        console.warn('⚠️ All profile fetch attempts timed out. Falling back to unauthenticated state.');
-                        toast.error('تعذر الاتصال بقاعدة البيانات. يرجى تحديث الصفحة.');
+                        // All retries exhausted, gracefully fallback using soft fail
+                        console.warn('⚠️ All profile fetch attempts timed out. Soft failing...');
+                        if (!isSilentRetry) toast('الاتصال بطيء، جاري تحميل بيانات الحساب...', { icon: '⚠️', id: 'slow-conn' });
+                        setTimeout(() => { fetchProfile(userId, 1, true); }, 5000);
+                        return;
                     } else {
                         // Catching any other potential JS execution bugs during the fetch cycle
                         console.warn('⚠️ Unexpected error during profile fetch:', err);
+                        
+                        if (attempt < retries) {
+                            continue;
+                        }
+                        
+                        if (!isSilentRetry) toast('الاتصال بطيء، جاري تحميل بيانات الحساب...', { icon: '⚠️', id: 'slow-conn' });
+                        setTimeout(() => { fetchProfile(userId, 1, true); }, 5000);
+                        return;
                     }
-
-                    // Terminal failure (either unexpected error or completely out of retries)
-                    setProfile(null);
-                    setUser(null);
-                    return; // Exit loop and function
                 }
             }
         } catch (fatalError) {
@@ -189,7 +207,12 @@ export const AuthProvider = ({ children }) => {
 
                 // Fetch extended profile data if the session is initiating, logging in, or refreshing
                 if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
-                    await fetchProfile(session.user.id);
+                    if (!profileRef.current) {
+                        await fetchProfile(session.user.id);
+                    } else {
+                        console.log('✅ Profile already in state, skipping redundant database fetch.');
+                        setLoading(false);
+                    }
                 }
             } else {
                 // No session user object found, fallback to logged out state

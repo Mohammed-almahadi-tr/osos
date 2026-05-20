@@ -14,6 +14,7 @@ const DailyAttendance = () => {
     const [attendanceRows, setAttendanceRows] = useState([]);
     const [loading, setLoading] = useState(true);
     const [pdfExporting, setPdfExporting] = useState(false);
+    const [companyName, setCompanyName] = useState("");
 
     useEffect(() => {
         if (selectedCompanyId) {
@@ -33,6 +34,14 @@ const DailyAttendance = () => {
             if (empError) throw empError;
 
             const empIds = employeesData.map(e => e.id);
+
+            // Fetch company name
+            const { data: compData } = await supabase
+                .from('companies')
+                .select('name')
+                .eq('id', selectedCompanyId)
+                .single();
+            if (compData) setCompanyName(compData.name);
 
             // Fetch attendance for those employees on selected date
             const { data: attendanceData, error: attError } = await supabase
@@ -74,67 +83,70 @@ const DailyAttendance = () => {
             return;
         }
 
-        const headers = ["الموظف", "القسم/دور", "وقت الدخول", "وقت الخروج", "الحالة"];
+        setTimeout(() => {
+            try {
+                const headers = ["الموظف", "القسم/دور", "وقت الدخول", "وقت الخروج", "الحالة"];
 
-        const rowsData = attendanceRows.map(row => {
-            const hasCheckedIn = !!row.check_in;
-            const hasCheckedOut = !!row.check_out;
+                const rowsData = attendanceRows.map(row => {
+                    const hasCheckedIn = !!row.check_in;
+                    const hasCheckedOut = !!row.check_out;
 
-            let status = "";
-            if (hasCheckedIn && !hasCheckedOut) status = "حاضر الآن";
-            else if (hasCheckedOut) status = "منصرف";
-            else status = "غائب";
+                    let status = "";
+                    if (hasCheckedIn && !hasCheckedOut) status = "حاضر الآن";
+                    else if (hasCheckedOut) status = "منصرف";
+                    else status = "غائب";
 
-            return [
-                row.name,
-                row.job_title || '',
-                formatTime(row.check_in),
-                formatTime(row.check_out),
-                status
-            ];
-        });
+                    return [
+                        row.name,
+                        row.job_title || '',
+                        formatTime(row.check_in),
+                        formatTime(row.check_out),
+                        status
+                    ];
+                });
 
-        const worksheetData = [headers, ...rowsData];
-        const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
-        worksheet['!dir'] = 'rtl';
+                const worksheetData = [headers, ...rowsData];
+                const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+                worksheet['!dir'] = 'rtl';
 
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "تقرير الحضور");
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "تقرير الحضور");
 
-        const wbOut = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-        const blob = new Blob([wbOut], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = `تقرير_الحضور_${date}.xlsx`;
-        a.target = '_blank';
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 3000);
+                const wbOut = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+                const blob = new Blob([wbOut], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = `تقرير_الحضور_${date}.xlsx`;
+                a.target = '_blank';
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 3000);
+            } catch (error) {
+                console.error("Export Error: ", error);
+                toast.error("حدث خطأ أثناء تصدير Excel");
+            }
+        }, 50);
     };
 
-    const exportAggregatePDF = async () => {
+    const exportAggregatePDF = () => {
         if (attendanceRows.length === 0) {
             toast.error("لا توجد بيانات للتصدير");
             return;
         }
         setPdfExporting(true);
-        try {
-            const { data: companyData } = await supabase
-                .from('companies')
-                .select('name')
-                .eq('id', selectedCompanyId)
-                .single();
 
-            const companyName = companyData?.name || "غير محدد";
+        setTimeout(async () => {
+            try {
+                const cName = companyName || "غير محدد";
 
-            const pdfBytes = await fetch('/osos_paper.pdf').then(res => res.arrayBuffer());
-            const fontBytes = await fetch('/fonts/Cairo-VariableFont_slnt,wght.ttf').then(res => res.arrayBuffer());
+                const pdfBytes = await fetch('/osos_paper.pdf').then(res => res.arrayBuffer());
+                const fontBytes = await fetch('/fonts/Cairo-VariableFont_slnt,wght.ttf').then(res => res.arrayBuffer());
 
-            const pdfDoc = await PDFDocument.load(pdfBytes);
-            pdfDoc.registerFontkit(fontkit);
-            const customFont = await pdfDoc.embedFont(fontBytes);
+                const pdfDoc = await PDFDocument.load(pdfBytes);
+                pdfDoc.registerFontkit(fontkit);
+                const customFont = await pdfDoc.embedFont(fontBytes);
 
             const drawRTL = (page, text, x, y, size = 12) => {
                 if (!text) return;
@@ -213,7 +225,7 @@ const DailyAttendance = () => {
             const valueX = 490;
 
             drawRTL(page, 'الشركة :', labelX, docInfoY, 14);
-            drawRTL(page, companyName, valueX, docInfoY, 14);
+            drawRTL(page, cName, valueX, docInfoY, 14);
 
             docInfoY -= 25;
             drawRTL(page, 'التاريخ :', labelX, docInfoY, 14);
@@ -335,11 +347,12 @@ const DailyAttendance = () => {
 
             toast.success("تم تصدير PDF بنجاح");
         } catch (error) {
-            console.error("Error exporting PDF:", error);
+            console.error("Export Error: ", error);
             toast.error("حدث خطأ أثناء تصدير PDF");
         } finally {
             setPdfExporting(false);
         }
+        }, 50);
     };
 
     return (

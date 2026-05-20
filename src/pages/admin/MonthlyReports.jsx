@@ -19,6 +19,7 @@ const MonthlyReports = () => {
     const [reportData, setReportData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [pdfExporting, setPdfExporting] = useState(false);
+    const [companyName, setCompanyName] = useState("");
 
     useEffect(() => {
         if (selectedCompanyId) {
@@ -38,6 +39,14 @@ const MonthlyReports = () => {
             if (empError) throw empError;
 
             const empIds = employeesData.map(e => e.id);
+
+            // Fetch company name
+            const { data: compData } = await supabase
+                .from('companies')
+                .select('name')
+                .eq('id', selectedCompanyId)
+                .single();
+            if (compData) setCompanyName(compData.name);
 
             // Fetch attendance for the selected month
             // format: YYYY-MM
@@ -115,58 +124,61 @@ const MonthlyReports = () => {
             return;
         }
 
-        const headers = ["الموظف", "القسم/دور", "أيام الحضور", "أيام الغياب", "إجمالي الساعات", "نسبة الالتزام"];
+        setTimeout(() => {
+            try {
+                const headers = ["الموظف", "القسم/دور", "أيام الحضور", "أيام الغياب", "إجمالي الساعات", "نسبة الالتزام"];
 
-        const rowsData = reportData.map(row => [
-            row.name,
-            row.job_title || '',
-            `${row.daysPresent} يوم`,
-            `${row.daysAbsent} يوم`,
-            `${row.totalHours} ساعة`,
-            `${row.completionRate}%`
-        ]);
+                const rowsData = reportData.map(row => [
+                    row.name,
+                    row.job_title || '',
+                    `${row.daysPresent} يوم`,
+                    `${row.daysAbsent} يوم`,
+                    `${row.totalHours} ساعة`,
+                    `${row.completionRate}%`
+                ]);
 
-        const worksheetData = [headers, ...rowsData];
-        const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
-        worksheet['!dir'] = 'rtl';
+                const worksheetData = [headers, ...rowsData];
+                const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+                worksheet['!dir'] = 'rtl';
 
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "التقرير الشهري");
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "التقرير الشهري");
 
-        const wbOut = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-        const blob = new Blob([wbOut], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = `تقرير_شهري_${month}.xlsx`;
-        a.target = '_blank';
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 3000);
+                const wbOut = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+                const blob = new Blob([wbOut], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = `تقرير_شهري_${month}.xlsx`;
+                a.target = '_blank';
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 3000);
+            } catch (error) {
+                console.error("Export Error: ", error);
+                toast.error("حدث خطأ أثناء تصدير Excel");
+            }
+        }, 50);
     };
 
-    const exportAggregatePDF = async () => {
+    const exportAggregatePDF = () => {
         if (reportData.length === 0) {
             toast.error("لا توجد بيانات للتصدير");
             return;
         }
         setPdfExporting(true);
-        try {
-            const { data: companyData } = await supabase
-                .from('companies')
-                .select('name')
-                .eq('id', selectedCompanyId)
-                .single();
 
-            const companyName = companyData?.name || "غير محدد";
+        setTimeout(async () => {
+            try {
+                const cName = companyName || "غير محدد";
 
-            const pdfBytes = await fetch('/osos_paper.pdf').then(res => res.arrayBuffer());
-            const fontBytes = await fetch('/fonts/Cairo-VariableFont_slnt,wght.ttf').then(res => res.arrayBuffer());
+                const pdfBytes = await fetch('/osos_paper.pdf').then(res => res.arrayBuffer());
+                const fontBytes = await fetch('/fonts/Cairo-VariableFont_slnt,wght.ttf').then(res => res.arrayBuffer());
 
-            const pdfDoc = await PDFDocument.load(pdfBytes);
-            pdfDoc.registerFontkit(fontkit);
-            const customFont = await pdfDoc.embedFont(fontBytes);
+                const pdfDoc = await PDFDocument.load(pdfBytes);
+                pdfDoc.registerFontkit(fontkit);
+                const customFont = await pdfDoc.embedFont(fontBytes);
 
             const drawRTL = (page, text, x, y, size = 12) => {
                 if (!text) return;
@@ -245,7 +257,7 @@ const MonthlyReports = () => {
             const valueX = 490;
 
             drawRTL(page, 'الشركة :', labelX, docInfoY, 14);
-            drawRTL(page, companyName, valueX, docInfoY, 14);
+            drawRTL(page, cName, valueX, docInfoY, 14);
 
             docInfoY -= 25;
             drawRTL(page, 'الشهر :', labelX, docInfoY, 14);
@@ -345,11 +357,12 @@ const MonthlyReports = () => {
 
             toast.success("تم تصدير PDF بنجاح");
         } catch (error) {
-            console.error("Error exporting PDF:", error);
+            console.error("Export Error: ", error);
             toast.error("حدث خطأ أثناء تصدير PDF");
         } finally {
             setPdfExporting(false);
         }
+        }, 50);
     };
 
     return (
