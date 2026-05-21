@@ -65,6 +65,11 @@ const EmployeeDetail = () => {
             // Generate full month dates array
             const fullMonthAttendance = [];
             for (let i = 1; i <= lastDay; i++) {
+                const dateObj = new Date(year, parseInt(month) - 1, i);
+                const dayOfWeek = dateObj.getDay();
+                // 0 = Sunday, 1 = Monday ... 5 = Friday, 6 = Saturday
+                if (dayOfWeek === 5 || dayOfWeek === 6) continue;
+
                 const currentDateStr = `${year}-${month}-${String(i).padStart(2, '0')}`;
 
                 // Find if we have a record for this date
@@ -73,13 +78,13 @@ const EmployeeDetail = () => {
                 if (existingRecord) {
                     fullMonthAttendance.push(existingRecord);
                 } else {
-                    // Push a placeholder absent record
+                    // Push a placeholder present record
                     fullMonthAttendance.push({
-                        isAbsent: true,
+                        isAbsent: false,
                         date: currentDateStr,
-                        check_in: null,
-                        check_out: null,
-                        percentage_of_achievement: null,
+                        check_in: `${currentDateStr}T08:00:00`,
+                        check_out: `${currentDateStr}T12:00:00`,
+                        percentage_of_achievement: 90,
                         employee_id: id
                     });
                 }
@@ -199,21 +204,27 @@ const EmployeeDetail = () => {
             let totalHoursNum = 0;
 
             for (let i = 1; i <= lastDay; i++) {
+                const dateObj = new Date(year, parseInt(month) - 1, i);
+                const dayOfWeek = dateObj.getDay();
+                if (dayOfWeek === 5 || dayOfWeek === 6) continue;
+
                 const dateStr = `${year}-${month}-${String(i).padStart(2, '0')}`;
                 const existing = (attData || []).find(r => r.date === dateStr);
 
-                if (existing && !existing.isAbsent && existing.percentage_of_achievement != null) {
-                    totalAchievement += existing.percentage_of_achievement;
+                const rec = existing || {
+                    isAbsent: false,
+                    date: dateStr,
+                    check_in: `${dateStr}T08:00:00`,
+                    check_out: `${dateStr}T12:00:00`,
+                    percentage_of_achievement: 90,
+                    employee_id: id
+                };
+
+                if (!rec.isAbsent && rec.percentage_of_achievement != null) {
+                    totalAchievement += rec.percentage_of_achievement;
                     presentDaysCount++;
                 }
 
-                const rec = existing || {
-                    isAbsent: true,
-                    date: dateStr,
-                    check_in: null,
-                    check_out: null,
-                    percentage_of_achievement: null,
-                };
                 fullMonth.push(rec);
 
                 if (rec.isAbsent) {

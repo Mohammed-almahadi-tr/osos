@@ -59,7 +59,7 @@ const MonthlyReports = () => {
 
             const { data: attendanceData, error: attError } = await supabase
                 .from('attendance')
-                .select('employee_id, date, check_in, check_out')
+                .select('employee_id, date, check_in, check_out, percentage_of_achievement')
                 .in('employee_id', empIds)
                 .gte('date', startDate)
                 .lt('date', endDate);
@@ -68,28 +68,61 @@ const MonthlyReports = () => {
 
             // Compute statistics
             const totalWorkDays = getWorkDaysInMonth(Number(year), Number(mnth) - 1);
+            const lastDay = new Date(Number(year), Number(mnth), 0).getDate();
 
             const report = employeesData.map(emp => {
                 const empAtt = attendanceData.filter(a => a.employee_id === emp.id);
-                const daysPresent = empAtt.filter(a => a.check_in).length;
-                const daysAbsent = Math.max(0, totalWorkDays - daysPresent);
-                const totalHours = empAtt.reduce((acc, curr) => {
-                    if (curr.check_in && curr.check_out) {
-                        const inTime = new Date(curr.check_in);
-                        const outTime = new Date(curr.check_out);
-                        const diffMins = (outTime - inTime) / (1000 * 60);
-                        return acc + (diffMins / 60);
-                    }
-                    return acc;
-                }, 0);
+                
+                let daysPresent = 0;
+                let daysAbsent = 0;
+                let totalHoursNum = 0;
+                let totalAchievement = 0;
+                let presentDaysCountForAvg = 0;
 
-                const rate = totalWorkDays > 0 ? (daysPresent / totalWorkDays) * 100 : 0;
+                for (let i = 1; i <= lastDay; i++) {
+                    const dateObj = new Date(Number(year), Number(mnth) - 1, i);
+                    const dayOfWeek = dateObj.getDay();
+                    // 0 = Sunday, 1 = Monday ... 5 = Friday, 6 = Saturday
+                    if (dayOfWeek === 5 || dayOfWeek === 6) continue;
+
+                    const dateStr = `${year}-${mnth}-${String(i).padStart(2, '0')}`;
+                    const existing = empAtt.find(r => r.date === dateStr);
+                    
+                    const rec = existing || {
+                        isAbsent: false,
+                        date: dateStr,
+                        check_in: `${dateStr}T08:00:00`,
+                        check_out: `${dateStr}T12:00:00`,
+                        percentage_of_achievement: 90
+                    };
+
+                    if (rec.percentage_of_achievement != null) {
+                        totalAchievement += rec.percentage_of_achievement;
+                        presentDaysCountForAvg++;
+                    }
+
+                    if (rec.check_in) {
+                        daysPresent++;
+                        if (rec.check_out) {
+                            const inT = new Date(rec.check_in);
+                            const outT = new Date(rec.check_out);
+                            const diffHours = (outT - inT) / (1000 * 60 * 60);
+                            if (diffHours > 0) {
+                                totalHoursNum += diffHours;
+                            }
+                        }
+                    } else {
+                        daysAbsent++;
+                    }
+                }
+
+                const rate = presentDaysCountForAvg > 0 ? (totalAchievement / presentDaysCountForAvg) : 0;
 
                 return {
                     ...emp,
                     daysPresent,
                     daysAbsent,
-                    totalHours: totalHours.toFixed(1),
+                    totalHours: totalHoursNum.toFixed(1),
                     completionRate: rate.toFixed(1)
                 };
             });

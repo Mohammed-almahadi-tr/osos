@@ -53,14 +53,27 @@ const DailyAttendance = () => {
             if (attError) throw attError;
 
             // Merge Data
-            const rows = employeesData.map(emp => {
+            const dateObj = new Date(date);
+            const dayOfWeek = dateObj.getDay();
+            const isWeekend = dayOfWeek === 5 || dayOfWeek === 6;
+
+            const rows = isWeekend ? [] : employeesData.map(emp => {
                 const attRec = attendanceData.find(a => a.employee_id === emp.id);
-                return {
-                    ...emp,
-                    attendance_id: attRec?.id,
-                    check_in: attRec?.check_in,
-                    check_out: attRec?.check_out,
-                };
+                if (attRec) {
+                    return {
+                        ...emp,
+                        attendance_id: attRec.id,
+                        check_in: attRec.check_in,
+                        check_out: attRec.check_out,
+                    };
+                } else {
+                    return {
+                        ...emp,
+                        attendance_id: null,
+                        check_in: `${date}T08:00:00`,
+                        check_out: `${date}T12:00:00`,
+                    };
+                }
             });
 
             setAttendanceRows(rows);
