@@ -368,6 +368,256 @@ const DailyAttendance = () => {
         }, 50);
     };
 
+    const exportBulkDetailsPDF = () => {
+        if (attendanceRows.length === 0) {
+            toast.error("لا توجد بيانات للتصدير");
+            return;
+        }
+        setPdfExporting(true);
+
+        setTimeout(async () => {
+            try {
+                // 1. Fetch all employees for this company
+                const { data: employeesData, error: empError } = await supabase
+                    .from('employees')
+                    .select('*')
+                    .eq('company_id', selectedCompanyId);
+                if (empError) throw empError;
+
+                const empIds = employeesData.map(e => e.id);
+
+                // 2. Fetch all attendance for this month
+                const [year, mnth] = date.split('-');
+                const startDate = `${year}-${mnth}-01`;
+                const lastDay = new Date(year, mnth, 0).getDate();
+                const endDate = `${year}-${mnth}-${lastDay}`;
+
+                const { data: attendanceData, error: attError } = await supabase
+                    .from('attendance')
+                    .select('*')
+                    .in('employee_id', empIds)
+                    .gte('date', startDate)
+                    .lte('date', endDate);
+                if (attError) throw attError;
+
+                // Group attendance by employee
+                const attendanceByEmp = {};
+                empIds.forEach(id => {
+                    attendanceByEmp[id] = attendanceData.filter(a => a.employee_id === id);
+                });
+
+                // Load assets
+                const pdfBytes = await fetch('/osos_paper.pdf').then(res => res.arrayBuffer());
+                const fontBytes = await fetch('/fonts/Cairo-VariableFont_slnt,wght.ttf').then(res => res.arrayBuffer());
+
+                const templateDoc = await PDFDocument.load(pdfBytes);
+                const pdfDoc = await PDFDocument.create();
+                pdfDoc.registerFontkit(fontkit);
+                const customFont = await pdfDoc.embedFont(fontBytes);
+
+                // Helper functions
+                const calculateHours = (checkIn, checkOut) => {
+                    if (!checkIn || !checkOut) return '0.0';
+                    const inTime = new Date(checkIn);
+                    const outTime = new Date(checkOut);
+                    const diffHours = (outTime - inTime) / (1000 * 60 * 60);
+                    return diffHours > 0 ? diffHours.toFixed(1) : '0.0';
+                };
+
+                const drawRTL = (page, text, x, y, size = 12) => {
+                    if (!text) return;
+                    const str = String(text);
+                    const regex = /([A-Za-z0-9.:%/-]+(?:\s+[A-Za-z0-9.:%/-]+)*)/g;
+                    const segments = str.split(regex).filter(Boolean);
+                    let totalWidth = 0;
+                    const segWidths = segments.map(seg => {
+                        const w = customFont.widthOfTextAtSize(seg, size);
+                        totalWidth += w;
+                        return w;
+                    });
+                    let currentX = x;
+                    segments.forEach((seg, index) => {
+                        const w = segWidths[index];
+                        page.drawText(seg, { x: currentX - w, y, size, font: customFont });
+                        currentX -= w;
+                    });
+                };
+
+                const drawCenteredText = (page, text, rightBound, width, y, size) => {
+                    const regex = /([A-Za-z0-9.:%/-]+(?:\s+[A-Za-z0-9.:%/-]+)*)/g;
+                    const segments = String(text || '').split(regex).filter(Boolean);
+                    let totalW = 0;
+                    const segWidths = segments.map(seg => {
+                        const w = customFont.widthOfTextAtSize(seg, size);
+                        totalW += w;
+                        return w;
+                    });
+                    let currentX = rightBound - (width / 2) + (totalW / 2);
+                    segments.forEach((seg, index) => {
+                        const w = segWidths[index];
+                        page.drawText(seg, { x: currentX - w, y, size, font: customFont });
+                        currentX -= w;
+                    });
+                };
+
+                // Copy the template page exactly as many times as there are employees
+                const copiedPages = await pdfDoc.copyPages(templateDoc, Array(employeesData.length).fill(0));
+                copiedPages.forEach(page => pdfDoc.addPage(page));
+
+                const currentMonthString = `${mnth}/${year}`;
+                const cName = companyName || "غير محدد";
+
+                employeesData.forEach((empData, index) => {
+                    const page = pdfDoc.getPages()[index];
+                    const attData = attendanceByEmp[empData.id] || [];
+
+                    let totalAchievement = 0;
+                    let presentDaysCount = 0;
+                    let totalAttendance = 0;
+                    let totalAbsence = 0;
+                    let totalHoursNum = 0;
+
+                    for (let i = 1; i <= lastDay; i++) {
+                        const dateObj = new Date(year, parseInt(mnth) - 1, i);
+                        const dayOfWeek = dateObj.getDay();
+                        if (dayOfWeek === 5 || dayOfWeek === 6) continue;
+
+                        const dateStr = `${year}-${mnth}-${String(i).padStart(2, '0')}`;
+                        const existing = attData.find(r => r.date === dateStr);
+
+                        const rec = existing || {
+                            isAbsent: false,
+                            date: dateStr,
+                            check_in: `${dateStr}T08:00:00`,
+                            check_out: `${dateStr}T12:00:00`,
+                            percentage_of_achievement: 90,
+                            employee_id: empData.id
+                        };
+
+                        if (!rec.isAbsent && rec.percentage_of_achievement != null) {
+                            totalAchievement += rec.percentage_of_achievement;
+                            presentDaysCount++;
+                        }
+
+                        if (rec.isAbsent) {
+                            totalAbsence++;
+                        } else {
+                            const h = parseFloat(calculateHours(rec.check_in, rec.check_out));
+                            if (h > 0) {
+                                totalAttendance++;
+                                totalHoursNum += h;
+                            } else {
+                                totalAbsence++;
+                            }
+                        }
+                    }
+
+                    const totalHours = totalHoursNum.toFixed(1);
+                    const calcAvg = presentDaysCount > 0 ? (totalAchievement / presentDaysCount).toFixed(1) : 0;
+
+                    // Top Table dimensions
+                    const boxX = 50;
+                    const boxWidth = 495;
+                    const topBoxY = 510;
+                    const topBoxHeight = 140;
+
+                    page.drawRectangle({ x: boxX, y: topBoxY, width: boxWidth, height: topBoxHeight, color: rgb(0.95, 0.95, 0.95) });
+                    page.drawRectangle({ x: boxX, y: topBoxY + 70, width: boxWidth, height: 35, color: rgb(1, 1, 1) });
+                    page.drawRectangle({ x: boxX, y: topBoxY, width: boxWidth, height: 35, color: rgb(1, 1, 1) });
+                    page.drawRectangle({ x: boxX, y: topBoxY, width: boxWidth, height: topBoxHeight, borderColor: rgb(0.2, 0.2, 0.2), borderWidth: 1.5 });
+
+                    page.drawLine({ start: { x: boxX, y: topBoxY + 35 }, end: { x: boxX + boxWidth, y: topBoxY + 35 }, thickness: 1, color: rgb(0.2, 0.2, 0.2) });
+                    page.drawLine({ start: { x: boxX, y: topBoxY + 70 }, end: { x: boxX + boxWidth, y: topBoxY + 70 }, thickness: 1, color: rgb(0.2, 0.2, 0.2) });
+                    page.drawLine({ start: { x: boxX, y: topBoxY + 105 }, end: { x: boxX + boxWidth, y: topBoxY + 105 }, thickness: 1, color: rgb(0.2, 0.2, 0.2) });
+
+                    const labelX = boxX + boxWidth - 20;
+                    const valueX = 350;
+
+                    drawRTL(page, 'الشركة :', labelX, topBoxY + 105 + 12, 13);
+                    drawRTL(page, cName, valueX, topBoxY + 105 + 12, 13);
+
+                    drawRTL(page, 'المسمى الوظيفي :', labelX, topBoxY + 70 + 12, 13);
+                    drawRTL(page, empData.job_title || '', valueX, topBoxY + 70 + 12, 13);
+
+                    drawRTL(page, 'نسبة الانجاز :', labelX, topBoxY + 35 + 12, 13);
+                    drawRTL(page, `${calcAvg}%`, valueX, topBoxY + 35 + 12, 13);
+
+                    drawRTL(page, 'الراتب المستحق:', labelX, topBoxY + 12, 13);
+                    drawRTL(page, empData.salary ? `${empData.salary} ريال` : '-', valueX, topBoxY + 12, 13);
+
+                    const skillsTitleY = topBoxY - 45;
+                    drawRTL(page, "مهام الوظيفة", labelX, skillsTitleY, 16);
+
+                    const skillsStr = empData.job_skills || '';
+                    const skills = skillsStr ? skillsStr.split(/[\n,]+/).map(s => s.trim()).filter(Boolean) : [];
+                    let skillY = skillsTitleY - 30;
+
+                    if (skills.length > 0) {
+                        skills.forEach((skill) => {
+                            drawRTL(page, `•  ${skill}`, labelX - 20, skillY, 13);
+                            skillY -= 22;
+                        });
+                    } else {
+                        drawRTL(page, "-", labelX - 20, skillY, 13);
+                    }
+
+                    const tableTopY = Math.min(450, skillY - 20);
+                    const bottomBoxHeight = 70;
+                    const bottomBoxY = tableTopY - bottomBoxHeight;
+
+                    page.drawRectangle({ x: boxX, y: bottomBoxY + 35, width: boxWidth, height: 35, color: rgb(0.98, 0.78, 0.36) });
+                    page.drawRectangle({ x: boxX, y: bottomBoxY, width: boxWidth, height: bottomBoxHeight, borderColor: rgb(0.2, 0.2, 0.2), borderWidth: 1.5 });
+                    page.drawLine({ start: { x: boxX, y: bottomBoxY + 35 }, end: { x: boxX + boxWidth, y: bottomBoxY + 35 }, thickness: 1, color: rgb(0.2, 0.2, 0.2) });
+
+                    const colWidths = [120, 90, 65, 55, 55, 50, 60];
+                    const getColRightBound = (idx) => {
+                        let r = boxX + boxWidth;
+                        for (let j = 0; j < idx; j++) r -= colWidths[j];
+                        return r;
+                    };
+
+                    for (let i = 0; i < 6; i++) {
+                        const vx = getColRightBound(i) - colWidths[i];
+                        page.drawLine({ start: { x: vx, y: bottomBoxY }, end: { x: vx, y: bottomBoxY + bottomBoxHeight }, thickness: 1, color: rgb(0.2, 0.2, 0.2) });
+                    }
+
+                    const bottomHeaders = ["اسم الموظف", "رقم الهوية", "الشهر الحالي", "أيام الحضور", "أيام الغياب", "الحالة", "إجمالي الساعات"];
+                    const bottomData = [
+                        empData.name || '',
+                        empData.national_id || '',
+                        currentMonthString,
+                        String(totalAttendance),
+                        String(totalAbsence),
+                        "نشط",
+                        String(totalHours)
+                    ];
+
+                    bottomHeaders.forEach((text, i) => drawCenteredText(page, text, getColRightBound(i), colWidths[i], bottomBoxY + 35 + 12, 11));
+                    bottomData.forEach((text, i) => drawCenteredText(page, text, getColRightBound(i), colWidths[i], bottomBoxY + 12, 11));
+                });
+
+                const pdfOutput = await pdfDoc.save();
+                const blob = new Blob([pdfOutput], { type: 'application/pdf' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = `تفاصيل_الموظفين_${date}.pdf`;
+                a.target = '_blank';
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 3000);
+
+                toast.success("تم تصدير تفاصيل الموظفين بنجاح");
+            } catch (error) {
+                console.error("Export Error: ", error);
+                toast.error("حدث خطأ أثناء تصدير تفاصيل الموظفين");
+            } finally {
+                setPdfExporting(false);
+            }
+        }, 50);
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm">
@@ -395,6 +645,14 @@ const DailyAttendance = () => {
                     >
                         <span className="material-symbols-outlined text-sm">{pdfExporting ? 'hourglass_empty' : 'picture_as_pdf'}</span>
                         {pdfExporting ? 'جاري التصدير...' : 'تصدير PDF'}
+                    </button>
+                    <button
+                        onClick={exportBulkDetailsPDF}
+                        disabled={pdfExporting}
+                        className="bg-indigo-600 hover:opacity-90 text-white font-bold px-4 py-2.5 rounded-xl transition-opacity flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
+                    >
+                        <span className="material-symbols-outlined text-sm">{pdfExporting ? 'hourglass_empty' : 'library_books'}</span>
+                        {pdfExporting ? 'جاري التصدير...' : 'تحميل تفاصيل الجميع PDF'}
                     </button>
                 </div>
             </div>
