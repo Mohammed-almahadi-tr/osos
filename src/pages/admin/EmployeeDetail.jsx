@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../services/supabase';
 import toast from 'react-hot-toast';
@@ -26,11 +26,7 @@ const EmployeeDetail = () => {
     const [saving, setSaving] = useState(false);
     const [pdfExporting, setPdfExporting] = useState(false);
 
-    useEffect(() => {
-        fetchEmployeeData();
-    }, [id, selectedMonth]);
-
-    const fetchEmployeeData = async () => {
+    const fetchEmployeeData = useCallback(async () => {
         setLoading(true);
         try {
             // Fetch employee details
@@ -100,7 +96,11 @@ const EmployeeDetail = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [id, selectedMonth, navigate]);
+
+    useEffect(() => {
+        fetchEmployeeData();
+    }, [fetchEmployeeData]);
 
     const handleExportExcel = () => {
         if (!employee) return;
@@ -264,10 +264,8 @@ const EmployeeDetail = () => {
                 const segments = str.split(regex).filter(Boolean);
 
                 // Calculate total width of all segments
-                let totalWidth = 0;
                 const segWidths = segments.map(seg => {
                     const w = customFont.widthOfTextAtSize(seg, size);
-                    totalWidth += w;
                     return w;
                 });
 

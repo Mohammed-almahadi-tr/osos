@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../services/supabase';
 import { useCompany } from '../../context/CompanyContext';
 import { useNavigate } from 'react-router-dom';
@@ -15,14 +15,9 @@ const DailyAttendance = () => {
     const [loading, setLoading] = useState(true);
     const [pdfExporting, setPdfExporting] = useState(false);
     const [companyName, setCompanyName] = useState("");
+    const [useActualAttendance, setUseActualAttendance] = useState(false);
 
-    useEffect(() => {
-        if (selectedCompanyId) {
-            fetchAttendance();
-        }
-    }, [selectedCompanyId, date]);
-
-    const fetchAttendance = async () => {
+    const fetchAttendance = useCallback(async () => {
         setLoading(true);
         try {
             // Fetch employees for company
@@ -35,13 +30,18 @@ const DailyAttendance = () => {
 
             const empIds = employeesData.map(e => e.id);
 
-            // Fetch company name
+            // Fetch company data
+            let useActualAttendance = false;
             const { data: compData } = await supabase
                 .from('companies')
-                .select('name')
+                .select('name, use_actual_attendance')
                 .eq('id', selectedCompanyId)
                 .single();
-            if (compData) setCompanyName(compData.name);
+            if (compData) {
+                setCompanyName(compData.name);
+                useActualAttendance = compData.use_actual_attendance || false;
+                setUseActualAttendance(useActualAttendance);
+            }
 
             // Fetch attendance for those employees on selected date
             const { data: attendanceData, error: attError } = await supabase
@@ -67,12 +67,21 @@ const DailyAttendance = () => {
                         check_out: attRec.check_out,
                     };
                 } else {
-                    return {
-                        ...emp,
-                        attendance_id: null,
-                        check_in: `${date}T08:00:00`,
-                        check_out: `${date}T12:00:00`,
-                    };
+                    if (useActualAttendance) {
+                        return {
+                            ...emp,
+                            attendance_id: null,
+                            check_in: null,
+                            check_out: null,
+                        };
+                    } else {
+                        return {
+                            ...emp,
+                            attendance_id: null,
+                            check_in: `${date}T08:00:00`,
+                            check_out: `${date}T12:00:00`,
+                        };
+                    }
                 }
             });
 
@@ -83,7 +92,13 @@ const DailyAttendance = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [selectedCompanyId, date]);
+
+    useEffect(() => {
+        if (selectedCompanyId) {
+            fetchAttendance();
+        }
+    }, [selectedCompanyId, fetchAttendance]);
 
     const formatTime = (isoString) => {
         if (!isoString) return '--:--';
@@ -166,11 +181,8 @@ const DailyAttendance = () => {
                 const str = String(text);
                 const regex = /([A-Za-z0-9.:%/-]+(?:\s+[A-Za-z0-9.:%/-]+)*)/g;
                 const segments = str.split(regex).filter(Boolean);
-                let totalWidth = 0;
                 const segWidths = segments.map(seg => {
-                    const w = customFont.widthOfTextAtSize(seg, size);
-                    totalWidth += w;
-                    return w;
+                    return customFont.widthOfTextAtSize(seg, size);
                 });
                 let currentX = x;
                 segments.forEach((seg, index) => {
@@ -429,11 +441,8 @@ const DailyAttendance = () => {
                     const str = String(text);
                     const regex = /([A-Za-z0-9.:%/-]+(?:\s+[A-Za-z0-9.:%/-]+)*)/g;
                     const segments = str.split(regex).filter(Boolean);
-                    let totalWidth = 0;
                     const segWidths = segments.map(seg => {
-                        const w = customFont.widthOfTextAtSize(seg, size);
-                        totalWidth += w;
-                        return w;
+                        return customFont.widthOfTextAtSize(seg, size);
                     });
                     let currentX = x;
                     segments.forEach((seg, index) => {
@@ -485,14 +494,30 @@ const DailyAttendance = () => {
                         const dateStr = `${year}-${mnth}-${String(i).padStart(2, '0')}`;
                         const existing = attData.find(r => r.date === dateStr);
 
-                        const rec = existing || {
-                            isAbsent: false,
-                            date: dateStr,
-                            check_in: `${dateStr}T08:00:00`,
-                            check_out: `${dateStr}T12:00:00`,
-                            percentage_of_achievement: 90,
-                            employee_id: empData.id
-                        };
+                        let rec;
+                        if (existing) {
+                            rec = existing;
+                        } else {
+                            if (useActualAttendance) {
+                                rec = {
+                                    isAbsent: true,
+                                    date: dateStr,
+                                    check_in: null,
+                                    check_out: null,
+                                    percentage_of_achievement: 0,
+                                    employee_id: empData.id
+                                };
+                            } else {
+                                rec = {
+                                    isAbsent: false,
+                                    date: dateStr,
+                                    check_in: `${dateStr}T08:00:00`,
+                                    check_out: `${dateStr}T12:00:00`,
+                                    percentage_of_achievement: 90,
+                                    employee_id: empData.id
+                                };
+                            }
+                        }
 
                         if (!rec.isAbsent && rec.percentage_of_achievement != null) {
                             totalAchievement += rec.percentage_of_achievement;

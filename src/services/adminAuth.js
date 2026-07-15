@@ -90,6 +90,75 @@ export async function createEmployeeUser({ username, password, email }) {
 }
 
 /**
+ * Create a new company manager account
+ * @param {Object} userData - User data
+ * @param {string} userData.username - Username for login
+ * @param {string} userData.password - Password for the user
+ * @param {string} userData.company_id - Company ID this manager belongs to
+ * @returns {Promise<{success: boolean, userId?: string, error?: string}>}
+ */
+export async function createManagerUser({ username, password, company_id }) {
+  try {
+    const userEmail = `${username}@system.local`;
+    console.log('🔐 Creating manager user account:', { username });
+
+    const { data: authData, error: authError } = await adminSupabase.auth.signUp({
+      email: userEmail,
+      password: password,
+      options: {
+        data: {
+          username: username,
+          role: 'company_manager'
+        }
+      }
+    });
+
+    if (authError) {
+      console.error('❌ Auth error:', authError);
+      if (authError.message.includes('already registered')) {
+        return { success: false, error: 'اسم المستخدم مستخدم بالفعل' };
+      }
+      return { success: false, error: authError.message };
+    }
+
+    if (!authData.user) {
+      return { success: false, error: 'فشل إنشاء حساب المستخدم' };
+    }
+
+    const userId = authData.user.id;
+    console.log('✅ Manager account created:', userId);
+
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .upsert({
+        id: userId,
+        username: username,
+        role: 'company_manager'
+      }, { onConflict: 'id' });
+
+    if (profileError) {
+      console.warn('⚠️ Profile upsert error:', profileError);
+    }
+
+    const { error: cmError } = await supabase
+      .from('company_managers')
+      .insert({
+        user_id: userId,
+        company_id: company_id
+      });
+
+    if (cmError) {
+      console.warn('⚠️ Company manager link error:', cmError);
+    }
+
+    return { success: true, userId };
+  } catch (error) {
+    console.error('❌ Unexpected error creating manager:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
  * Check if a username is already taken
  * @param {string} username - Username to check
  * @returns {Promise<boolean>} - True if available, false if taken

@@ -19,10 +19,12 @@ import AddCompany from './pages/admin/AddCompany';
 import CompaniesList from './pages/admin/CompaniesList';
 import CompanyCourses from './pages/admin/CompanyCourses';
 import EmployeeDetail from './pages/admin/EmployeeDetail';
+import ProjectsPage from './pages/admin/ProjectsPage';
+import TasksPage from './pages/admin/TasksPage';
 import EmployeeDashboard from './pages/employee/EmployeeDashboard';
 
-const ProtectedRoute = ({ children, requireAdmin, requireEmployee }) => {
-  const { user, isAdmin, isEmployee, loading } = useAuth();
+const ProtectedRoute = ({ children, requireAdmin, requireEmployee, requireSuperAdmin }) => {
+  const { user, isAdmin, isEmployee, isCompanyManager, loading } = useAuth();
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center bg-surface text-primary">جاري التحميل...</div>;
@@ -32,7 +34,13 @@ const ProtectedRoute = ({ children, requireAdmin, requireEmployee }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (requireAdmin && !isAdmin) {
+  if (requireSuperAdmin && !isAdmin) {
+    if (isCompanyManager) return <Navigate to="/admin/dashboard" replace />;
+    if (isEmployee) return <Navigate to="/employee/dashboard" replace />;
+    return <Navigate to="/login" replace />;
+  }
+
+  if (requireAdmin && !isAdmin && !isCompanyManager) {
     if (isEmployee) return <Navigate to="/employee/dashboard" replace />;
     return <Navigate to="/login" replace />;
   }
@@ -46,7 +54,7 @@ const ProtectedRoute = ({ children, requireAdmin, requireEmployee }) => {
 };
 
 function App() {
-  const { user, isAdmin, isEmployee, loading } = useAuth();
+  const { user, isAdmin, isEmployee, isCompanyManager, loading } = useAuth();
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center bg-surface text-primary">جاري التحميل...</div>;
@@ -56,18 +64,19 @@ function App() {
     <Router>
       <Toaster position="top-center" />
       <Routes>
-        <Route path="/login" element={(user && (isAdmin || isEmployee)) ? <Navigate to="/" replace /> : <Login />} />
+        <Route path="/login" element={(user && (isAdmin || isEmployee || isCompanyManager)) ? <Navigate to="/" replace /> : <Login />} />
         
         <Route path="/" element={
           !user ? <Navigate to="/login" replace /> :
           isAdmin ? <Navigate to="/admin/company-selection" replace /> :
+          isCompanyManager ? <Navigate to="/admin/dashboard" replace /> :
           isEmployee ? <Navigate to="/employee/dashboard" replace /> :
           <Navigate to="/login" replace />
         } />
 
         {/* Admin Routes */}
         <Route path="/admin/company-selection" element={
-          <ProtectedRoute requireAdmin>
+          <ProtectedRoute requireSuperAdmin>
             <CompanySelection />
           </ProtectedRoute>
         } />
@@ -83,10 +92,20 @@ function App() {
           <Route path="employees" element={<EmployeesList />} />
           <Route path="add-employee" element={<AddEmployee />} />
           <Route path="edit-employee/:id" element={<EditEmployee />} />
-          <Route path="companies" element={<CompaniesList />} />
-          <Route path="add-company" element={<AddCompany />} />
+          <Route path="companies" element={
+            <ProtectedRoute requireSuperAdmin>
+              <CompaniesList />
+            </ProtectedRoute>
+          } />
+          <Route path="add-company" element={
+            <ProtectedRoute requireSuperAdmin>
+              <AddCompany />
+            </ProtectedRoute>
+          } />
           <Route path="company-courses" element={<CompanyCourses />} />
           <Route path="employee/:id" element={<EmployeeDetail />} />
+          <Route path="projects" element={<ProjectsPage />} />
+          <Route path="tasks" element={<TasksPage />} />
         </Route>
 
         {/* Employee Routes */}

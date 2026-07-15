@@ -1,10 +1,8 @@
 import { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
 import { supabase } from '../services/supabase';
 import toast from 'react-hot-toast';
 
 const Login = () => {
-    const { user, loading } = useAuth();
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -36,7 +34,7 @@ const Login = () => {
             
             console.log('🔐 Attempting login for:', loginEmail);
 
-            const { error, data } = await supabase.auth.signInWithPassword({
+            const { error } = await supabase.auth.signInWithPassword({
                 email: loginEmail,
                 password: password,
             });

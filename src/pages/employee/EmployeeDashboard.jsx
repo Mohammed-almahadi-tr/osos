@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../services/supabase';
 import toast from 'react-hot-toast';
@@ -8,38 +8,12 @@ const EmployeeDashboard = () => {
     const [employeeId, setEmployeeId] = useState(null);
     const [employeeName, setEmployeeName] = useState('');
     const [attendanceRecord, setAttendanceRecord] = useState(null);
+    const [tasks, setTasks] = useState([]);
+    const [taskNotes, setTaskNotes] = useState('');
+    const [activeTaskId, setActiveTaskId] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        if (user) {
-            fetchEmployeeData();
-        }
-    }, [user]);
-
-    const fetchEmployeeData = async () => {
-        try {
-            // First find the employee record matching the user_id
-            const { data: empData, error: empError } = await supabase
-                .from('employees')
-                .select('id, name')
-                .eq('user_id', user.id)
-                .single();
-            
-            if (empError && empError.code !== 'PGRST116') throw empError;
-            
-            if (empData) {
-                setEmployeeId(empData.id);
-                setEmployeeName(empData.name);
-                await fetchTodayAttendance(empData.id);
-            }
-        } catch (error) {
-            console.error("Error fetching employee ID:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const fetchTodayAttendance = async (empId) => {
+    const fetchTodayAttendance = useCallback(async (empId) => {
         const today = new Date().toISOString().split('T')[0];
         try {
             const { data, error } = await supabase
@@ -54,7 +28,63 @@ const EmployeeDashboard = () => {
         } catch (error) {
             console.error("Error fetching attendance:", error);
         }
-    };
+    }, []);
+
+    const fetchTasks = useCallback(async (empId) => {
+        try {
+            const startOfDay = new Date();
+            startOfDay.setHours(0, 0, 0, 0);
+            const endOfDay = new Date();
+            endOfDay.setHours(23, 59, 59, 999);
+            
+            const { data, error } = await supabase
+                .from('tasks')
+                .select('*, projects(name)')
+                .eq('employee_id', empId)
+                .gte('created_at', startOfDay.toISOString())
+                .lte('created_at', endOfDay.toISOString())
+                .order('created_at', { ascending: false });
+                
+            if (error) throw error;
+            setTasks(data || []);
+            
+            const active = data?.find(t => t.status === 'in_progress');
+            if (active) setActiveTaskId(active.id);
+            else setActiveTaskId(null);
+        } catch (error) {
+            console.error("Error fetching tasks:", error);
+        }
+    }, []);
+
+    const fetchEmployeeData = useCallback(async () => {
+        try {
+            // First find the employee record matching the user_id
+            const { data: empData, error: empError } = await supabase
+                .from('employees')
+                .select('id, name')
+                .eq('user_id', user.id)
+                .single();
+            
+            if (empError && empError.code !== 'PGRST116') throw empError;
+            
+            if (empData) {
+                setEmployeeId(empData.id);
+                setEmployeeName(empData.name);
+                await fetchTodayAttendance(empData.id);
+                await fetchTasks(empData.id);
+            }
+        } catch (error) {
+            console.error("Error fetching employee ID:", error);
+        } finally {
+            setLoading(false);
+        }
+    }, [user, fetchTodayAttendance, fetchTasks]);
+
+    useEffect(() => {
+        if (user) {
+            fetchEmployeeData();
+        }
+    }, [user, fetchEmployeeData]);
 
     const handleCheckIn = async () => {
         if (!employeeId) {
@@ -103,6 +133,37 @@ const EmployeeDashboard = () => {
         } catch (error) {
             console.error("Check-out error:", error);
             toast.error("حدث خطأ أثناء تسجيل الانصراف");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleStartTask = async (taskId) => {
+        if (activeTaskId) return toast.error('لا يمكنك بدء مهمة وهناك مهمة أخرى قيد التنفيذ');
+        setLoading(true);
+        try {
+            const { error } = await supabase.from('tasks').update({ status: 'in_progress', started_at: new Date().toISOString() }).eq('id', taskId);
+            if (error) throw error;
+            toast.success("تم بدء المهمة");
+            await fetchTasks(employeeId);
+        } catch (error) {
+            toast.error("فشل في بدء المهمة");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleEndTask = async (taskId) => {
+        if (!taskNotes.trim()) return toast.error("يرجى كتابة وصف ما تم إنجازه");
+        setLoading(true);
+        try {
+            const { error } = await supabase.from('tasks').update({ status: 'completed', ended_at: new Date().toISOString(), employee_notes: taskNotes }).eq('id', taskId);
+            if (error) throw error;
+            toast.success("تم إنهاء المهمة وتسجيل الملاحظات");
+            setTaskNotes('');
+            await fetchTasks(employeeId);
+        } catch (error) {
+            toast.error("فشل في إنهاء المهمة");
         } finally {
             setLoading(false);
         }
@@ -163,14 +224,76 @@ const EmployeeDashboard = () => {
             {/* Dashboard Bento Grid */}
             <div className="grid grid-cols-12 gap-6">
                 <div className="col-span-12 lg:col-span-8 space-y-6">
-                    {/* Placeholder for tasks */}
-                    <div className="bg-white rounded-2xl p-8 shadow-sm">
+                    {/* Tasks List */}
+                    <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm">
                         <div className="flex items-center justify-between mb-8">
-                            <h3 className="text-xl font-bold text-zinc-900">المهام اليومية التعاونية (قريباً)</h3>
+                            <h3 className="text-xl font-bold text-zinc-900 flex items-center gap-2">
+                                <span className="material-symbols-outlined text-primary">task</span>
+                                مهام اليوم
+                            </h3>
                         </div>
-                        <div className="flex items-center justify-center p-10 text-zinc-400 border-2 border-dashed border-zinc-200 rounded-xl">
-                            لا توجد مهام مسندة حالياً...
-                        </div>
+                        {tasks.length === 0 ? (
+                            <div className="flex items-center justify-center p-10 text-zinc-400 border-2 border-dashed border-zinc-200 rounded-xl">
+                                لا توجد مهام مسندة لك اليوم
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {tasks.map(task => (
+                                    <div key={task.id} className={`p-5 rounded-xl border-2 transition-all ${task.status === 'completed' ? 'border-green-100 bg-green-50/30' : task.status === 'in_progress' ? 'border-amber-200 bg-amber-50/30' : 'border-zinc-100 bg-white hover:border-primary/30'}`}>
+                                        <div className="flex flex-col md:flex-row gap-4 justify-between">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-3 mb-2">
+                                                    <h4 className="font-bold text-lg text-zinc-900">{task.name}</h4>
+                                                    {task.status === 'completed' && <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-bold">مكتملة</span>}
+                                                    {task.status === 'in_progress' && <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-xs font-bold">قيد التنفيذ</span>}
+                                                </div>
+                                                {task.description && <p className="text-sm text-zinc-600 mb-3">{task.description}</p>}
+                                                <div className="flex items-center gap-4 text-xs text-zinc-500 font-medium">
+                                                    <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">folder</span> {task.projects?.name}</span>
+                                                    <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">schedule</span> {task.duration_hours} ساعة مقدرة</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="shrink-0 flex flex-col justify-center">
+                                                {task.status === 'pending' && (
+                                                    <button 
+                                                        onClick={() => handleStartTask(task.id)}
+                                                        disabled={loading || activeTaskId !== null || !hasCheckedIn || hasCheckedOut}
+                                                        className="bg-primary text-white px-6 py-2 rounded-xl font-bold hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50"
+                                                    >
+                                                        البدء في المهمة
+                                                    </button>
+                                                )}
+                                                {task.status === 'in_progress' && (
+                                                    <div className="space-y-3 w-full md:w-64">
+                                                        <textarea 
+                                                            placeholder="ماذا أنجزت في هذه المهمة؟ *"
+                                                            rows="2"
+                                                            value={taskNotes}
+                                                            onChange={(e) => setTaskNotes(e.target.value)}
+                                                            className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none resize-none"
+                                                        ></textarea>
+                                                        <button 
+                                                            onClick={() => handleEndTask(task.id)}
+                                                            disabled={loading || !taskNotes.trim()}
+                                                            className="w-full bg-amber-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-amber-600 transition-colors shadow-sm disabled:opacity-50 text-sm"
+                                                        >
+                                                            إنهاء المهمة
+                                                        </button>
+                                                    </div>
+                                                )}
+                                                {task.status === 'completed' && task.employee_notes && (
+                                                    <div className="bg-white border border-green-100 rounded-lg p-3 w-full md:w-64">
+                                                        <p className="text-xs text-zinc-500 mb-1 font-bold">ملاحظات الإنجاز:</p>
+                                                        <p className="text-sm text-zinc-700">{task.employee_notes}</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
 

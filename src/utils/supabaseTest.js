@@ -26,7 +26,7 @@ export async function testSupabaseConnection() {
   // 2. Test database connection
   console.log('\n2️⃣ Testing Database Connection:');
   try {
-    const { data, error } = await supabase.from('companies').select('count');
+    const { error } = await supabase.from('companies').select('count');
     if (error) {
       console.error('❌ Database query failed:', error.message);
       return false;

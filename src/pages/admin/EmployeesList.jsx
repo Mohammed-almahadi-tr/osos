@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../services/supabase';
 import { useCompany } from '../../context/CompanyContext';
 import { useNavigate } from 'react-router-dom';
@@ -12,13 +12,7 @@ const EmployeesList = () => {
     const [employeeToDelete, setEmployeeToDelete] = useState(null);
     const navigate = useNavigate();
 
-    useEffect(() => {
-        if (selectedCompanyId) {
-            fetchEmployees();
-        }
-    }, [selectedCompanyId]);
-
-    const fetchEmployees = async () => {
+    const fetchEmployees = useCallback(async () => {
         setLoading(true);
         try {
             const { data, error } = await supabase
@@ -35,7 +29,13 @@ const EmployeesList = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [selectedCompanyId]);
+
+    useEffect(() => {
+        if (selectedCompanyId) {
+            fetchEmployees();
+        }
+    }, [selectedCompanyId, fetchEmployees]);
 
     const handleDelete = async () => {
         if (!employeeToDelete) return;

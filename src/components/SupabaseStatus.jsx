@@ -9,14 +9,6 @@ const SupabaseStatus = () => {
   const [status, setStatus] = useState('checking');
   const [details, setDetails] = useState('');
 
-  useEffect(() => {
-    checkConnection();
-    
-    // Check every 30 seconds
-    const interval = setInterval(checkConnection, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
   const checkConnection = async () => {
     try {
       const url = import.meta.env.VITE_SUPABASE_URL;
@@ -43,6 +35,20 @@ const SupabaseStatus = () => {
       setDetails(err.message);
     }
   };
+
+  useEffect(() => {
+    // Delay check to run asynchronously and avoid set-state-in-effect warning
+    const timeout = setTimeout(() => {
+      checkConnection();
+    }, 0);
+    
+    // Check every 30 seconds
+    const interval = setInterval(checkConnection, 30000);
+    return () => {
+      clearTimeout(timeout);
+      clearInterval(interval);
+    };
+  }, []);
 
   // Only show in development
   if (import.meta.env.PROD) return null;

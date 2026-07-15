@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../context/AuthContext';
@@ -12,13 +12,7 @@ const CompanySelection = () => {
     const { profile, signOut } = useAuth();
     const navigate = useNavigate();
 
-    useEffect(() => {
-        fetchCompanies();
-        // Clear previously selected company
-        setSelectedCompanyId(null);
-    }, []);
-
-    const fetchCompanies = async () => {
+    const fetchCompanies = useCallback(async () => {
         try {
             const { data, error } = await supabase
                 .from('companies')
@@ -33,7 +27,13 @@ const CompanySelection = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchCompanies();
+        // Clear previously selected company
+        setSelectedCompanyId(null);
+    }, [fetchCompanies, setSelectedCompanyId]);
 
     const handleSelectCompany = (companyId) => {
         setSelectedCompanyId(companyId);

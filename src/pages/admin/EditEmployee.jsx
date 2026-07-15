@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../services/supabase';
 import { useCompany } from '../../context/CompanyContext';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -18,17 +18,10 @@ const EditEmployee = () => {
         job_title: '',
         salary: '',
         job_skills: '',
+        is_ai: false
     });
 
-    useEffect(() => {
-        if (!selectedCompanyId) {
-            navigate('/admin/company-selection');
-            return;
-        }
-        fetchEmployeeData();
-    }, [id, selectedCompanyId, navigate]);
-
-    const fetchEmployeeData = async () => {
+    const fetchEmployeeData = useCallback(async () => {
         try {
             const { data, error } = await supabase
                 .from('employees')
@@ -47,6 +40,7 @@ const EditEmployee = () => {
                     job_title: data.job_title || '',
                     salary: data.salary || '',
                     job_skills: data.job_skills || '',
+                    is_ai: data.is_ai || false,
                 });
             }
         } catch (error) {
@@ -56,10 +50,19 @@ const EditEmployee = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [id, navigate]);
+
+    useEffect(() => {
+        if (!selectedCompanyId) {
+            navigate('/admin/company-selection');
+            return;
+        }
+        fetchEmployeeData();
+    }, [selectedCompanyId, navigate, fetchEmployeeData]);
 
     const handleChange = (e) => {
-        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+        const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+        setFormData(prev => ({ ...prev, [e.target.name]: value }));
     };
 
     const handleSubmit = async (e) => {
@@ -75,7 +78,8 @@ const EditEmployee = () => {
                 national_id: formData.national_id ? String(formData.national_id) : null,
                 job_title: formData.job_title,
                 salary: parseFloat(formData.salary) || 0,
-                job_skills: formData.job_skills || ''
+                job_skills: formData.job_skills || '',
+                is_ai: formData.is_ai
             };
 
             const { error } = await supabase
@@ -203,6 +207,25 @@ const EditEmployee = () => {
                                 ></textarea>
                                 <p className="text-xs text-zinc-500">يمكنك إدخال مهارات متعددة مفصولة بفاصلة</p>
                             </div>
+                        </div>
+
+                        {/* AI Agent Option */}
+                        <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 mt-4">
+                            <label className="flex items-start gap-3 cursor-pointer">
+                                <div className="mt-1">
+                                    <input 
+                                        type="checkbox"
+                                        name="is_ai"
+                                        checked={formData.is_ai}
+                                        onChange={handleChange}
+                                        className="w-5 h-5 text-purple-600 rounded border-purple-300 focus:ring-purple-500"
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <h4 className="text-sm font-bold text-purple-900 mb-1">موظف افتراضي (Agent AI)</h4>
+                                    <p className="text-xs text-purple-700">عند التفعيل: سيقوم النظام يومياً بشكل آلي بتسجيل حضور الموظف، وتنفيذ مهامه المعلقة بالترتيب وكتابة وصف الإنجاز تلقائياً، ثم تسجيل الانصراف بدون تدخل بشري.</p>
+                                </div>
+                            </label>
                         </div>
                     </div>
 

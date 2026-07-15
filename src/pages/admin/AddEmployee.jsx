@@ -19,7 +19,8 @@ const AddEmployee = () => {
         salary: '',
         job_skills: '',
         username: '',
-        password: ''
+        password: '',
+        isAI: false
     });
     const [showPassword, setShowPassword] = useState(false);
     const [usernameStatus, setUsernameStatus] = useState({ checking: false, available: null, message: '' });
@@ -29,11 +30,12 @@ const AddEmployee = () => {
     const [bulkProgress, setBulkProgress] = useState({ total: 0, current: 0, success: 0, failed: 0 });
 
     const handleChange = (e) => {
-        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+        const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+        setFormData(prev => ({ ...prev, [e.target.name]: value }));
         
         // Check username availability when it changes
         if (e.target.name === 'username') {
-            checkUsernameAvailability(e.target.value);
+            checkUsernameAvailability(value);
         }
     };
 
@@ -60,7 +62,7 @@ const AddEmployee = () => {
                     message: '✗ اسم المستخدم مستخدم بالفعل' 
                 });
             }
-        } catch (error) {
+        } catch {
             setUsernameStatus({ checking: false, available: null, message: '' });
         }
     };
@@ -123,7 +125,8 @@ const AddEmployee = () => {
                 salary: parseFloat(formData.salary),
                 job_skills: formData.job_skills,
                 company_id: selectedCompanyId,
-                user_id: userId // Link employee to auth user
+                user_id: userId, // Link employee to auth user
+                is_ai: formData.isAI
             };
 
             const { error: employeeError } = await supabase
@@ -504,6 +507,25 @@ const AddEmployee = () => {
                                 </div>
                                 <p className="text-xs text-zinc-500">6 أحرف على الأقل، يُنصح باستخدام أحرف وأرقام</p>
                             </div>
+                        </div>
+
+                        {/* AI Agent Option */}
+                        <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 mt-4">
+                            <label className="flex items-start gap-3 cursor-pointer">
+                                <div className="mt-1">
+                                    <input 
+                                        type="checkbox"
+                                        name="isAI"
+                                        checked={formData.isAI}
+                                        onChange={handleChange}
+                                        className="w-5 h-5 text-purple-600 rounded border-purple-300 focus:ring-purple-500"
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <h4 className="text-sm font-bold text-purple-900 mb-1">موظف افتراضي (Agent AI)</h4>
+                                    <p className="text-xs text-purple-700">عند التفعيل: سيقوم النظام يومياً بشكل آلي بتسجيل حضور الموظف، وتنفيذ مهامه المعلقة بالترتيب وكتابة وصف الإنجاز تلقائياً، ثم تسجيل الانصراف بدون تدخل بشري.</p>
+                                </div>
+                            </label>
                         </div>
                     </div>
 

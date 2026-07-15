@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../services/supabase';
 import { useCompany } from '../../context/CompanyContext';
 import { useNavigate } from 'react-router-dom';
@@ -20,14 +20,9 @@ const MonthlyReports = () => {
     const [loading, setLoading] = useState(true);
     const [pdfExporting, setPdfExporting] = useState(false);
     const [companyName, setCompanyName] = useState("");
+    const [useActualAttendance, setUseActualAttendance] = useState(false);
 
-    useEffect(() => {
-        if (selectedCompanyId) {
-            fetchReport();
-        }
-    }, [selectedCompanyId, month]);
-
-    const fetchReport = async () => {
+    const fetchReport = useCallback(async () => {
         setLoading(true);
         try {
             // Get all employees for the company
@@ -40,13 +35,18 @@ const MonthlyReports = () => {
 
             const empIds = employeesData.map(e => e.id);
 
-            // Fetch company name
+            // Fetch company data
+            let useActualAttendance = false;
             const { data: compData } = await supabase
                 .from('companies')
-                .select('name')
+                .select('name, use_actual_attendance')
                 .eq('id', selectedCompanyId)
                 .single();
-            if (compData) setCompanyName(compData.name);
+            if (compData) {
+                setCompanyName(compData.name);
+                useActualAttendance = compData.use_actual_attendance || false;
+                setUseActualAttendance(useActualAttendance);
+            }
 
             // Fetch attendance for the selected month
             // format: YYYY-MM
@@ -67,7 +67,6 @@ const MonthlyReports = () => {
             if (attError) throw attError;
 
             // Compute statistics
-            const totalWorkDays = getWorkDaysInMonth(Number(year), Number(mnth) - 1);
             const lastDay = new Date(Number(year), Number(mnth), 0).getDate();
 
             const report = employeesData.map(emp => {
@@ -88,13 +87,28 @@ const MonthlyReports = () => {
                     const dateStr = `${year}-${mnth}-${String(i).padStart(2, '0')}`;
                     const existing = empAtt.find(r => r.date === dateStr);
                     
-                    const rec = existing || {
-                        isAbsent: false,
-                        date: dateStr,
-                        check_in: `${dateStr}T08:00:00`,
-                        check_out: `${dateStr}T12:00:00`,
-                        percentage_of_achievement: 90
-                    };
+                    let rec;
+                    if (existing) {
+                        rec = existing;
+                    } else {
+                        if (useActualAttendance) {
+                            rec = {
+                                isAbsent: true,
+                                date: dateStr,
+                                check_in: null,
+                                check_out: null,
+                                percentage_of_achievement: 0
+                            };
+                        } else {
+                            rec = {
+                                isAbsent: false,
+                                date: dateStr,
+                                check_in: `${dateStr}T08:00:00`,
+                                check_out: `${dateStr}T12:00:00`,
+                                percentage_of_achievement: 90
+                            };
+                        }
+                    }
 
                     if (rec.percentage_of_achievement != null) {
                         totalAchievement += rec.percentage_of_achievement;
@@ -134,22 +148,14 @@ const MonthlyReports = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [selectedCompanyId, month]);
 
-    // Helper: calculate working days in a month (excluding Friday/Saturday assume standard ME weekend)
-    function getWorkDaysInMonth(year, monthIndex) {
-        let days = 0;
-        const date = new Date(year, monthIndex, 1);
-        while (date.getMonth() === monthIndex) {
-            const day = date.getDay();
-            // 5 = Friday, 6 = Saturday
-            if (day !== 5 && day !== 6) {
-                days++;
-            }
-            date.setDate(date.getDate() + 1);
+    useEffect(() => {
+        if (selectedCompanyId) {
+            fetchReport();
         }
-        return days;
-    }
+    }, [selectedCompanyId, fetchReport]);
+
 
     const handleExportExcel = () => {
         if (reportData.length === 0) {
@@ -218,10 +224,8 @@ const MonthlyReports = () => {
                 const str = String(text);
                 const regex = /([A-Za-z0-9.:%/-]+(?:\s+[A-Za-z0-9.:%/-]+)*)/g;
                 const segments = str.split(regex).filter(Boolean);
-                let totalWidth = 0;
                 const segWidths = segments.map(seg => {
                     const w = customFont.widthOfTextAtSize(seg, size);
-                    totalWidth += w;
                     return w;
                 });
                 let currentX = x;
@@ -459,10 +463,8 @@ const MonthlyReports = () => {
                     const str = String(text);
                     const regex = /([A-Za-z0-9.:%/-]+(?:\s+[A-Za-z0-9.:%/-]+)*)/g;
                     const segments = str.split(regex).filter(Boolean);
-                    let totalWidth = 0;
                     const segWidths = segments.map(seg => {
                         const w = customFont.widthOfTextAtSize(seg, size);
-                        totalWidth += w;
                         return w;
                     });
                     let currentX = x;
@@ -515,14 +517,30 @@ const MonthlyReports = () => {
                         const dateStr = `${year}-${mnth}-${String(i).padStart(2, '0')}`;
                         const existing = attData.find(r => r.date === dateStr);
 
-                        const rec = existing || {
-                            isAbsent: false,
-                            date: dateStr,
-                            check_in: `${dateStr}T08:00:00`,
-                            check_out: `${dateStr}T12:00:00`,
-                            percentage_of_achievement: 90,
-                            employee_id: empData.id
-                        };
+                        let rec;
+                        if (existing) {
+                            rec = existing;
+                        } else {
+                            if (useActualAttendance) {
+                                rec = {
+                                    isAbsent: true,
+                                    date: dateStr,
+                                    check_in: null,
+                                    check_out: null,
+                                    percentage_of_achievement: 0,
+                                    employee_id: empData.id
+                                };
+                            } else {
+                                rec = {
+                                    isAbsent: false,
+                                    date: dateStr,
+                                    check_in: `${dateStr}T08:00:00`,
+                                    check_out: `${dateStr}T12:00:00`,
+                                    percentage_of_achievement: 90,
+                                    employee_id: empData.id
+                                };
+                            }
+                        }
 
                         if (!rec.isAbsent && rec.percentage_of_achievement != null) {
                             totalAchievement += rec.percentage_of_achievement;

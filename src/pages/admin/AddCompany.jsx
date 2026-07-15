@@ -2,16 +2,21 @@ import { useState } from 'react';
 import { supabase } from '../../services/supabase';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { createManagerUser } from '../../services/adminAuth';
 
 const AddCompany = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
-        name: ''
+        name: '',
+        managerUsername: '',
+        managerPassword: '',
+        useActualAttendance: false
     });
 
     const handleChange = (e) => {
-        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+        const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+        setFormData(prev => ({ ...prev, [e.target.name]: value }));
     };
 
     const handleSubmit = async (e) => {
@@ -19,6 +24,14 @@ const AddCompany = () => {
         
         if (!formData.name || formData.name.trim().length < 3) {
             toast.error("اسم الشركة يجب أن يكون 3 أحرف على الأقل");
+            return;
+        }
+        if (!formData.managerUsername || formData.managerUsername.trim().length < 4) {
+            toast.error("اسم مستخدم المدير يجب أن يكون 4 أحرف على الأقل");
+            return;
+        }
+        if (!formData.managerPassword || formData.managerPassword.trim().length < 6) {
+            toast.error("كلمة مرور المدير يجب أن تكون 6 أحرف على الأقل");
             return;
         }
 
@@ -29,7 +42,7 @@ const AddCompany = () => {
             
             const { data, error } = await supabase
                 .from('companies')
-                .insert([{ name: formData.name.trim() }])
+                .insert([{ name: formData.name.trim(), use_actual_attendance: formData.useActualAttendance }])
                 .select();
 
             if (error) {
@@ -39,7 +52,20 @@ const AddCompany = () => {
 
             console.log('✅ Company created successfully:', data[0]);
             
-            toast.success(`تم إضافة الشركة بنجاح!\n\nاسم الشركة: ${formData.name}`);
+            // Create manager for the company
+            console.log('🧑‍💼 Creating manager for company...');
+            const managerResult = await createManagerUser({
+                username: formData.managerUsername.trim(),
+                password: formData.managerPassword,
+                company_id: data[0].id
+            });
+
+            if (!managerResult.success) {
+                toast.error(`تم إضافة الشركة ولكن فشل إضافة المدير: ${managerResult.error}`);
+            } else {
+                toast.success(`تم إضافة الشركة ومدير النظام بنجاح!\n\nاسم الشركة: ${formData.name}`);
+            }
+            
             navigate('/admin/company-selection');
             
         } catch (error) {
@@ -104,6 +130,63 @@ const AddCompany = () => {
                                         <li>• مركز الخدمات الإدارية</li>
                                     </ul>
                                 </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mt-4">
+                            <label className="flex items-start gap-3 cursor-pointer">
+                                <div className="mt-1">
+                                    <input 
+                                        type="checkbox"
+                                        name="useActualAttendance"
+                                        checked={formData.useActualAttendance}
+                                        onChange={handleChange}
+                                        className="w-5 h-5 text-emerald-600 rounded border-emerald-300 focus:ring-emerald-500"
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <h4 className="text-sm font-bold text-emerald-900 mb-1">استخدام نظام تسجيل الحضور والانصراف الفعلي</h4>
+                                    <p className="text-xs text-emerald-700">عند التفعيل: سيتم احتساب ساعات العمل بناءً على أوقات تسجيل الدخول والخروج الفعلية للموظفين، وسيعتبر الموظف "غائب" افتراضياً ما لم يسجل حضوره. <br />عند التعطيل: سيتم اعتبار جميع الموظفين حاضرين بمتوسط 4 ساعات يومياً.</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4 pt-6 border-t border-zinc-100">
+                        <div className="flex items-start gap-3 bg-purple-50 border border-purple-200 rounded-xl p-4">
+                            <span className="material-symbols-outlined text-purple-600 mt-0.5">manage_accounts</span>
+                            <div className="flex-1">
+                                <h3 className="text-sm font-bold text-purple-900 mb-1">بيانات مدير الشركة</h3>
+                                <p className="text-xs text-purple-700">هذا الحساب سيمتلك صلاحية لإدارة موظفي ومهام هذه الشركة فقط.</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-zinc-700">اسم المستخدم (للدخول)</label>
+                                <input 
+                                    required
+                                    name="managerUsername"
+                                    value={formData.managerUsername}
+                                    onChange={handleChange}
+                                    type="text"
+                                    minLength={4}
+                                    className="w-full bg-surface-container border-2 border-primary/20 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/40 focus:border-primary" 
+                                    placeholder="مثال: manager_ahmed" 
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-zinc-700">كلمة المرور</label>
+                                <input 
+                                    required
+                                    name="managerPassword"
+                                    value={formData.managerPassword}
+                                    onChange={handleChange}
+                                    type="password"
+                                    minLength={6}
+                                    className="w-full bg-surface-container border-2 border-primary/20 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/40 focus:border-primary" 
+                                    placeholder="••••••••" 
+                                />
                             </div>
                         </div>
                     </div>

@@ -1,9 +1,10 @@
+/* eslint-disable react-refresh/only-export-components */
 /**
  * @file AuthContext.jsx
  * @description Provides global authentication state, session management, and extended profile data via Supabase.
  */
 
-import { createContext, useContext, useEffect, useState, useRef } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react';
 import { supabase } from '../services/supabase';
 import toast from 'react-hot-toast';
 
@@ -66,7 +67,7 @@ export const AuthProvider = ({ children }) => {
      * @param {number} [retries=3] - The number of allowed attempts before failing.
      * @returns {Promise<void>} Resolves when the profile fetch is completely resolved or fails securely.
      */
-    const fetchProfile = async (userId, retries = 3, isSilentRetry = false) => {
+    const fetchProfile = useCallback(async (userId, retries = 3, isSilentRetry = false) => {
         // Prevent concurrent execution of fetchProfile which causes lock races
         if (fetchInProgress.current) {
             console.log('⏳ fetchProfile already in progress, skipping concurrent call.');
@@ -124,7 +125,7 @@ export const AuthProvider = ({ children }) => {
                         }
                     }
 
-                    if (!data.role || (data.role !== 'admin' && data.role !== 'employee')) {
+                    if (!data.role || !['admin', 'employee', 'company_manager'].includes(data.role)) {
                         console.warn('⚠️ Invalid role detected:', data.role);
                         toast.error('هذا الحساب ليس لديه صلاحيات الدخول المحددة.');
                         
@@ -132,6 +133,21 @@ export const AuthProvider = ({ children }) => {
                         setUser(null);
                         await supabase.auth.signOut();
                         return; // Exit loop and function
+                    }
+
+                    // If user is a company_manager, fetch their company_id
+                    if (data.role === 'company_manager') {
+                        const { data: cmData, error: cmError } = await supabase
+                            .from('company_managers')
+                            .select('company_id')
+                            .eq('user_id', userId)
+                            .single();
+                        
+                        if (!cmError && cmData) {
+                            data.company_id = cmData.company_id;
+                        } else {
+                            console.warn('⚠️ Failed to fetch company_id for manager:', cmError);
+                        }
                     }
 
                     // Profile fetch successful
@@ -178,7 +194,7 @@ export const AuthProvider = ({ children }) => {
             setLoading(false);
             fetchInProgress.current = false;
         }
-    };
+    }, []);
 
     /**
      * Initializes global auth listener on component mount.
@@ -235,7 +251,7 @@ export const AuthProvider = ({ children }) => {
             clearTimeout(safetyTimeout);
             subscription.unsubscribe();
         };
-    }, []);
+    }, [fetchProfile]);
 
     // Construct the context payload exported to consuming components
     const value = {
@@ -244,6 +260,7 @@ export const AuthProvider = ({ children }) => {
         loading,
         isAdmin: profile?.role?.toLowerCase() === 'admin',
         isEmployee: profile?.role?.toLowerCase() === 'employee',
+        isCompanyManager: profile?.role?.toLowerCase() === 'company_manager',
         signOut: () => supabase.auth.signOut(),
     };
 

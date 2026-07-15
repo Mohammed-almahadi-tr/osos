@@ -9,11 +9,9 @@ const AdminDashboard = () => {
     const [stats, setStats] = useState({ employees: 0, attendanceToday: 0, absentToday: 0 });
     const [loading, setLoading] = useState(true);
 
-    if (!selectedCompanyId) {
-        return <Navigate to="/admin/company-selection" replace />;
-    }
-
     useEffect(() => {
+        if (!selectedCompanyId) return;
+
         const fetchDashboardData = async () => {
             setLoading(true);
             try {
@@ -45,6 +43,10 @@ const AdminDashboard = () => {
 
         fetchDashboardData();
     }, [selectedCompanyId]);
+
+    if (!selectedCompanyId) {
+        return <Navigate to="/admin/company-selection" replace />;
+    }
 
     return (
         <div className="space-y-8">

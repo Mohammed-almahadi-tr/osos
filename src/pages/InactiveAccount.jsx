@@ -1,10 +1,8 @@
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 
 const InactiveAccount = () => {
     const { user } = useAuth();
-    const navigate = useNavigate();
 
     const handleLogout = async () => {
         try {

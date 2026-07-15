@@ -1,12 +1,10 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useCompany } from '../context/CompanyContext';
 import { useState } from 'react';
 import clsx from 'clsx';
 
 const AdminLayout = () => {
-    const { profile, signOut } = useAuth();
-    const { selectedCompanyId } = useCompany();
+    const { profile, signOut, isCompanyManager } = useAuth();
     const navigate = useNavigate();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -97,23 +95,47 @@ const AdminLayout = () => {
 
                     <div className="h-[1px] bg-zinc-800 my-2"></div>
 
-                    <NavLink onClick={closeMobileMenu} to="/admin/companies" className={({ isActive }) => 
+                    <NavLink onClick={closeMobileMenu} to="/admin/projects" className={({ isActive }) => 
                         clsx("flex items-center gap-4 px-4 py-3 rounded-lg transition-all cursor-pointer",
                             isActive ? "bg-primary/10 text-amber-500 border-r-4 border-amber-500" : "text-zinc-400 hover:text-white hover:bg-white/5"
                         )
                     }>
-                        <span className="material-symbols-outlined">corporate_fare</span>
-                        <span className="font-medium text-sm md:text-base">إدارة الشركات</span>
+                        <span className="material-symbols-outlined">folder_managed</span>
+                        <span className="font-medium text-sm md:text-base">المشاريع والمهام الدورية</span>
                     </NavLink>
 
-                    <NavLink onClick={closeMobileMenu} to="/admin/add-company" className={({ isActive }) => 
+                    <NavLink onClick={closeMobileMenu} to="/admin/tasks" className={({ isActive }) => 
                         clsx("flex items-center gap-4 px-4 py-3 rounded-lg transition-all cursor-pointer",
                             isActive ? "bg-primary/10 text-amber-500 border-r-4 border-amber-500" : "text-zinc-400 hover:text-white hover:bg-white/5"
                         )
                     }>
-                        <span className="material-symbols-outlined">add_business</span>
-                        <span className="font-medium text-sm md:text-base">إضافة شركة</span>
+                        <span className="material-symbols-outlined">task</span>
+                        <span className="font-medium text-sm md:text-base">مهام اليوم</span>
                     </NavLink>
+
+                    {!isCompanyManager && (
+                        <>
+                            <div className="h-[1px] bg-zinc-800 my-2"></div>
+
+                            <NavLink onClick={closeMobileMenu} to="/admin/companies" className={({ isActive }) => 
+                                clsx("flex items-center gap-4 px-4 py-3 rounded-lg transition-all cursor-pointer",
+                                    isActive ? "bg-primary/10 text-amber-500 border-r-4 border-amber-500" : "text-zinc-400 hover:text-white hover:bg-white/5"
+                                )
+                            }>
+                                <span className="material-symbols-outlined">corporate_fare</span>
+                                <span className="font-medium text-sm md:text-base">إدارة الشركات</span>
+                            </NavLink>
+
+                            <NavLink onClick={closeMobileMenu} to="/admin/add-company" className={({ isActive }) => 
+                                clsx("flex items-center gap-4 px-4 py-3 rounded-lg transition-all cursor-pointer",
+                                    isActive ? "bg-primary/10 text-amber-500 border-r-4 border-amber-500" : "text-zinc-400 hover:text-white hover:bg-white/5"
+                                )
+                            }>
+                                <span className="material-symbols-outlined">add_business</span>
+                                <span className="font-medium text-sm md:text-base">إضافة شركة</span>
+                            </NavLink>
+                        </>
+                    )}
 
                     <NavLink onClick={closeMobileMenu} to="/admin/company-courses" className={({ isActive }) => 
                         clsx("flex items-center gap-4 px-4 py-3 rounded-lg transition-all cursor-pointer",
@@ -127,12 +149,14 @@ const AdminLayout = () => {
 
                 <div className="mt-auto pt-6 border-t border-zinc-800 space-y-3">
                     {/* Switch Company button */}
-                    <button onClick={() => { closeMobileMenu(); navigate('/admin/company-selection'); }} className="w-full flex items-center justify-between px-4 py-3 text-zinc-400 hover:text-white bg-white/5 rounded-xl transition-all">
-                        <div className="flex items-center gap-3">
-                            <span className="material-symbols-outlined text-[20px]">domain</span>
-                            <span className="font-medium text-sm">تغيير الشركة</span>
-                        </div>
-                    </button>
+                    {!isCompanyManager && (
+                        <button onClick={() => { closeMobileMenu(); navigate('/admin/company-selection'); }} className="w-full flex items-center justify-between px-4 py-3 text-zinc-400 hover:text-white bg-white/5 rounded-xl transition-all">
+                            <div className="flex items-center gap-3">
+                                <span className="material-symbols-outlined text-[20px]">domain</span>
+                                <span className="font-medium text-sm">تغيير الشركة</span>
+                            </div>
+                        </button>
+                    )}
 
                     <button onClick={() => { closeMobileMenu(); handleSignOut(); }} className="w-full flex items-center justify-between px-4 py-3 text-error/80 hover:text-error bg-error/10 rounded-xl transition-all">
                         <div className="flex items-center gap-3">
@@ -165,7 +189,7 @@ const AdminLayout = () => {
                         <div className="flex items-center gap-3 border-l border-zinc-200 pl-2 md:pl-4">
                             <div className="text-right hidden sm:block">
                                 <p className="text-zinc-900 font-bold text-sm leading-tight">{profile?.username || 'مدير النظام'}</p>
-                                <p className="text-zinc-500 text-[10px] text-left">مدير النظام</p>
+                                <p className="text-zinc-500 text-[10px] text-left">{isCompanyManager ? 'مدير الشركة' : 'مدير النظام'}</p>
                             </div>
                             <div className="w-9 h-9 md:w-10 md:h-10 rounded-full border-2 border-primary-container bg-surface-container flex items-center justify-center text-primary font-bold text-sm">
                                 {profile?.username?.charAt(0).toUpperCase() || 'M'}
