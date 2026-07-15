@@ -12,6 +12,8 @@ const TasksPage = () => {
     const [loading, setLoading] = useState(true);
 
     const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [editingTaskId, setEditingTaskId] = useState(null);
     const [taskForm, setTaskForm] = useState({
         project_id: '',
         employee_id: '',
@@ -81,16 +83,26 @@ const TasksPage = () => {
             return toast.error('يرجى تعبئة جميع الحقول المطلوبة');
         }
         try {
-            const { error } = await supabase.from('tasks').insert([{
-                ...taskForm
-            }]);
-            if (error) throw error;
-            toast.success('تم تعيين المهمة بنجاح');
+            if (isEditMode && editingTaskId) {
+                const { error } = await supabase.from('tasks').update({
+                    ...taskForm
+                }).eq('id', editingTaskId);
+                if (error) throw error;
+                toast.success('تم تحديث المهمة بنجاح');
+            } else {
+                const { error } = await supabase.from('tasks').insert([{
+                    ...taskForm
+                }]);
+                if (error) throw error;
+                toast.success('تم تعيين المهمة بنجاح');
+            }
             setIsTaskModalOpen(false);
             setTaskForm({ project_id: '', employee_id: '', name: '', description: '', duration_hours: '', status: 'pending' });
+            setIsEditMode(false);
+            setEditingTaskId(null);
             fetchData();
         } catch (error) {
-            toast.error('خطأ في إضافة المهمة');
+            toast.error('خطأ في حفظ المهمة');
         }
     };
 
@@ -128,7 +140,12 @@ const TasksPage = () => {
                         تحديث
                     </button>
                     <button 
-                        onClick={() => setIsTaskModalOpen(true)}
+                        onClick={() => {
+                            setTaskForm({ project_id: '', employee_id: '', name: '', description: '', duration_hours: '', status: 'pending' });
+                            setIsEditMode(false);
+                            setEditingTaskId(null);
+                            setIsTaskModalOpen(true);
+                        }}
                         className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl font-medium hover:opacity-90 transition-opacity shadow-sm"
                     >
                         <span className="material-symbols-outlined text-sm">add_task</span>
@@ -228,12 +245,13 @@ const TasksPage = () => {
                                         <th className="px-6 py-4">الموظف</th>
                                         <th className="px-6 py-4">الحالة</th>
                                         <th className="px-6 py-4">ملاحظات الإنجاز</th>
+                                        <th className="px-6 py-4">الإجراءات</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-zinc-50">
                                     {tasks.length === 0 ? (
                                         <tr>
-                                            <td colSpan="5" className="px-6 py-8 text-center text-zinc-500">لا توجد مهام اليوم</td>
+                                            <td colSpan="6" className="px-6 py-8 text-center text-zinc-500">لا توجد مهام اليوم</td>
                                         </tr>
                                     ) : (
                                         tasks.map(task => (
@@ -252,6 +270,27 @@ const TasksPage = () => {
                                                         <span className="text-xs text-zinc-400">-</span>
                                                     )}
                                                 </td>
+                                                <td className="px-6 py-4">
+                                                    <button 
+                                                        onClick={() => {
+                                                            setTaskForm({
+                                                                project_id: task.project_id || '',
+                                                                employee_id: task.employee_id || '',
+                                                                name: task.name || '',
+                                                                description: task.description || '',
+                                                                duration_hours: task.duration_hours || '',
+                                                                status: task.status || 'pending'
+                                                            });
+                                                            setIsEditMode(true);
+                                                            setEditingTaskId(task.id);
+                                                            setIsTaskModalOpen(true);
+                                                        }}
+                                                        className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                                                        title="تعديل المهمة"
+                                                    >
+                                                        <span className="material-symbols-outlined text-sm">edit</span>
+                                                    </button>
+                                                </td>
                                             </tr>
                                         ))
                                     )}
@@ -268,8 +307,8 @@ const TasksPage = () => {
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col">
                         <div className="px-6 py-4 border-b border-zinc-100 flex items-center justify-between shrink-0">
                             <h3 className="font-bold text-lg headline-font text-primary flex items-center gap-2">
-                                <span className="material-symbols-outlined">add_task</span>
-                                تعيين مهمة جديدة لليوم
+                                <span className="material-symbols-outlined">{isEditMode ? 'edit_square' : 'add_task'}</span>
+                                {isEditMode ? 'تعديل المهمة' : 'تعيين مهمة جديدة لليوم'}
                             </h3>
                             <button onClick={() => setIsTaskModalOpen(false)} className="text-zinc-400 hover:text-zinc-600">
                                 <span className="material-symbols-outlined">close</span>
@@ -337,7 +376,9 @@ const TasksPage = () => {
                             </form>
                         </div>
                         <div className="px-6 py-4 border-t border-zinc-100 flex gap-3 shrink-0 bg-zinc-50">
-                            <button type="submit" form="new-task-form" className="flex-1 bg-primary text-white py-2.5 rounded-xl font-bold hover:bg-primary/90 transition-colors shadow-sm text-sm">حفظ المهمة وتعيينها</button>
+                            <button type="submit" form="new-task-form" className="flex-1 bg-primary text-white py-2.5 rounded-xl font-bold hover:bg-primary/90 transition-colors shadow-sm text-sm">
+                                {isEditMode ? 'حفظ التعديلات' : 'حفظ المهمة وتعيينها'}
+                            </button>
                             <button type="button" onClick={() => setIsTaskModalOpen(false)} className="px-6 py-2.5 bg-white border border-zinc-200 text-zinc-600 font-bold rounded-xl hover:bg-zinc-50 transition-colors text-sm">إلغاء</button>
                         </div>
                     </div>
